@@ -1,0 +1,10 @@
+<FlexQueryResponse queryName="TradeConfirm" type="TC">
+  <FlexStatements count="1">
+    <FlexStatement accountId="U7654321" fromDate="20260617" toDate="20260617" period="" whenGenerated="20260617;110000">
+      <TradeConfirms>
+        <TradeConfirm accountId="U7654321" symbol="INTC  260618C00121000" conid="884089615" underlyingSymbol="INTC" multiplier="100" strike="121" expiry="20260618" putCall="C" transactionType="ExchTrade" execID="0000da50.6a3289b9.01.01" dateTime="20260617;102327" buySell="BUY" quantity="2" price="2.61" proceeds="-522" commission="-1.3965" />
+        <TradeConfirm accountId="U7654321" symbol="INTC  260618C00121000" conid="884089615" underlyingSymbol="INTC" multiplier="100" strike="121" expiry="20260618" putCall="C" transactionType="ExchTrade" execID="0000da50.6a3289c0.01.01" dateTime="20260617;104512" buySell="SELL" quantity="2" price="3.10" proceeds="620" commission="-1.3965" />
+      </TradeConfirms>
+    </FlexStatement>
+  </FlexStatements>
+</FlexQueryResponse>

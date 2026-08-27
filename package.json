@@ -1,0 +1,62 @@
+{
+  "name": "tradelogue",
+  "version": "0.1.0",
+  "description": "A local-first, AI-native trading journal for options day traders. Imports from Interactive Brokers, bring your own model.",
+  "license": "MIT",
+  "keywords": [
+    "trading-journal",
+    "trading",
+    "options",
+    "interactive-brokers",
+    "ibkr",
+    "ai",
+    "llm",
+    "nextjs",
+    "self-hosted"
+  ],
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:push": "drizzle-kit push",
+    "verify:pnl": "tsx scripts/verify-pnl.ts",
+    "import:flex": "tsx scripts/import-flex.ts",
+    "seed:setups": "tsx scripts/seed-setups.ts",
+    "import:journal": "tsx scripts/import-journal.ts",
+    "eval:coaching": "tsx scripts/eval-coaching.ts",
+    "sync:daily": "tsx scripts/daily-sync.ts",
+    "brief:generate": "tsx scripts/generate-brief.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.104.1",
+    "date-fns": "^4.4.0",
+    "date-fns-tz": "^3.2.0",
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
+    "fast-xml-parser": "^5.8.0",
+    "next": "16.2.9",
+    "next-themes": "^0.4.6",
+    "pg": "^8.21.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "recharts": "^3.8.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/pg": "^8.20.0",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.9",
+    "tailwindcss": "^4",
+    "tsx": "^4.22.4",
+    "typescript": "^5",
+    "vitest": "^4.1.8"
+  }
+}
