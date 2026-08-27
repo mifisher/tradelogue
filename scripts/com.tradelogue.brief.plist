@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Automated premarket market brief (macOS launchd).
+
+  TEMPLATE — replace the two placeholders before installing:
+    __TRADELOGUE_DIR__  absolute path to your clone (e.g. /Users/you/tradelogue)
+    __HOME__            your home directory (e.g. /Users/you)
+  launchd does not expand ~ or $HOME in these fields, so they must be literal.
+
+  Install:
+    sed -e "s|__TRADELOGUE_DIR__|$PWD|g" -e "s|__HOME__|$HOME|g" \
+      scripts/com.tradelogue.brief.plist > ~/Library/LaunchAgents/com.tradelogue.brief.plist
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.tradelogue.brief.plist
+  Run now:  launchctl kickstart -k gui/$(id -u)/com.tradelogue.brief
+  Disable:  launchctl bootout gui/$(id -u)/com.tradelogue.brief
+  Logs:     ~/Library/Logs/tradelogue-brief.log
+
+  The hour below is LOCAL to your Mac. Set it early enough to be premarket for
+  you. Note: launchd runs a missed StartCalendarInterval once on wake, so a
+  sleeping Mac still generates the brief when it wakes.
+
+  If npm is not at /opt/homebrew/bin (Intel Macs use /usr/local/bin), fix the
+  ProgramArguments path and the PATH entry to match `which npm`.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.tradelogue.brief</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/npm</string>
+    <string>run</string>
+    <string>brief:generate</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>__TRADELOGUE_DIR__</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+
+  <!-- 5:00 AM local, daily. -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key><integer>5</integer>
+    <key>Minute</key><integer>0</integer>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>__HOME__/Library/Logs/tradelogue-brief.log</string>
+  <key>StandardErrorPath</key>
+  <string>__HOME__/Library/Logs/tradelogue-brief.log</string>
+</dict>
+</plist>

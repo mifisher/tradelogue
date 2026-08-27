@@ -1,0 +1,12 @@
+<FlexQueryResponse queryName="TradingJournal" type="AF">
+  <FlexStatements count="1">
+    <FlexStatement accountId="U1234567" fromDate="20260608" toDate="20260608" period="LastBusinessDay" whenGenerated="20260608;200000">
+      <Trades>
+        <Trade accountId="U1234567" assetCategory="OPT" symbol="NVDA  260612P00170000" underlyingSymbol="NVDA" description="NVDA 12JUN26 170.0 P" conid="715000001" putCall="P" strike="170" expiry="20260612" multiplier="100" tradeDate="20260608" dateTime="20260608;063512" quantity="2" tradePrice="1.55" proceeds="-310" ibCommission="-1.3" buySell="BUY" ibExecID="0000e1a1.01" transactionType="ExchTrade" notes="" />
+        <Trade accountId="U1234567" assetCategory="OPT" symbol="NVDA  260612P00170000" underlyingSymbol="NVDA" description="NVDA 12JUN26 170.0 P" conid="715000001" putCall="P" strike="170" expiry="20260612" multiplier="100" tradeDate="20260608" dateTime="20260608;071045" quantity="-2" tradePrice="2.05" proceeds="410" ibCommission="-1.3" buySell="SELL" ibExecID="0000e1a1.02" transactionType="ExchTrade" notes="" />
+        <Trade accountId="U1234567" assetCategory="OPT" symbol="SMCI  260608C00050000" underlyingSymbol="SMCI" description="SMCI 08JUN26 50.0 C" conid="715000002" putCall="C" strike="50" expiry="20260608" multiplier="100" tradeDate="20260608" dateTime="20260608;130000" quantity="-3" tradePrice="0" proceeds="0" ibCommission="0" buySell="SELL" ibExecID="0000e1a1.03" transactionType="BookTrade" notes="Ep" />
+        <Trade accountId="U1234567" assetCategory="CASH" symbol="USD" underlyingSymbol="" description="USD" conid="0" tradeDate="20260608" dateTime="20260608;130000" quantity="0" tradePrice="0" proceeds="0" ibCommission="0" buySell="BUY" ibExecID="0000e1a1.04" transactionType="FxTrade" notes="" />
+      </Trades>
+    </FlexStatement>
+  </FlexStatements>
+</FlexQueryResponse>

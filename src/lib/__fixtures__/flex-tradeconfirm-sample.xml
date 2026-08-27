@@ -1,0 +1,10 @@
+<FlexQueryResponse queryName="TradeConfirm" type="TC">
+  <FlexStatements count="1">
+    <FlexStatement accountId="U7654321" fromDate="20260318" toDate="20260318" period="" whenGenerated="20260318;110000">
+      <TradeConfirms>
+        <TradeConfirm accountId="U7654321" symbol="GLBX  260319C00040000" conid="700000123" underlyingSymbol="GLBX" multiplier="100" strike="40" expiry="20260319" putCall="C" transactionType="ExchTrade" execID="0000aaaa.00000001.01.01" dateTime="20260318;101500" buySell="BUY" quantity="2" price="1.20" proceeds="-240" commission="-1.30" />
+        <TradeConfirm accountId="U7654321" symbol="GLBX  260319C00040000" conid="700000123" underlyingSymbol="GLBX" multiplier="100" strike="40" expiry="20260319" putCall="C" transactionType="ExchTrade" execID="0000aaaa.00000002.01.01" dateTime="20260318;103000" buySell="SELL" quantity="2" price="1.50" proceeds="300" commission="-1.30" />
+      </TradeConfirms>
+    </FlexStatement>
+  </FlexStatements>
+</FlexQueryResponse>

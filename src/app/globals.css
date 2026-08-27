@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Light mode — DESIGN-revolut.md "catalogue" palette */
+  --canvas: #ffffff;
+  --deep: #fafafa;
+  --elevated: #f4f4f4;
+  --lift: #ececec;               /* hover state for elevated surfaces */
+  --hairline: #e2e2e7;
+  --divider: rgba(25, 28, 31, 0.07);
+  --ondark: #191c1f;             /* primary text (ink in light mode) */
+  --mute: #505a63;
+  --stone: #8d969e;
+  --faint: #c9c9cd;
+  --gain: #428619;               /* accent-light-green — readable on white */
+  --loss: #e23b4a;
+  --cobalt: #494fdf;
+  --cobalt-deep: #3a40c4;
+  --on-cobalt: #ffffff;          /* on-primary: always white on cobalt, both modes */
+}
+
+.dark {
+  --canvas: #000000;
+  --deep: #0a0a0a;
+  --elevated: #16181a;
+  --lift: #1d2023;
+  --hairline: rgba(255, 255, 255, 0.12);
+  --divider: rgba(255, 255, 255, 0.06);
+  --ondark: #ffffff;
+  --mute: rgba(255, 255, 255, 0.72);
+  --stone: #8d969e;
+  --faint: #c9c9cd;
+  --gain: #00a87e;
+  --loss: #e23b4a;
+  --cobalt: #494fdf;
+  --cobalt-deep: #3a40c4;
+  --on-cobalt: #ffffff;
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-deep: var(--deep);
+  --color-elevated: var(--elevated);
+  --color-lift: var(--lift);
+  --color-hairline: var(--hairline);
+  --color-divider: var(--divider);
+  --color-ondark: var(--ondark);
+  --color-mute: var(--mute);
+  --color-stone: var(--stone);
+  --color-faint: var(--faint);
+  --color-gain: var(--gain);
+  --color-loss: var(--loss);
+  --color-cobalt: var(--cobalt);
+  --color-cobalt-deep: var(--cobalt-deep);
+  --color-on-cobalt: var(--on-cobalt);
+
+  --radius-chip: 12px;
+  --radius-card: 20px;
+  --radius-mock: 28px;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-inter-tight), var(--font-inter), ui-sans-serif, sans-serif;
+}
+
+body {
+  background: var(--canvas);
+  color: var(--ondark);
+  font-family: var(--font-sans);
+  letter-spacing: 0.015em;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-display {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.0;
+}
+
+.tabular { font-variant-numeric: tabular-nums; }

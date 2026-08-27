@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Automated daily IBKR sync (macOS launchd).
+
+  TEMPLATE — replace the two placeholders before installing:
+    __TRADELOGUE_DIR__  absolute path to your clone (e.g. /Users/you/tradelogue)
+    __HOME__            your home directory (e.g. /Users/you)
+  launchd does not expand ~ or $HOME in these fields, so they must be literal.
+
+  Install:
+    sed -e "s|__TRADELOGUE_DIR__|$PWD|g" -e "s|__HOME__|$HOME|g" \
+      scripts/com.tradelogue.sync.plist > ~/Library/LaunchAgents/com.tradelogue.sync.plist
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.tradelogue.sync.plist
+  Run now:  launchctl kickstart -k gui/$(id -u)/com.tradelogue.sync
+  Disable:  launchctl bootout gui/$(id -u)/com.tradelogue.sync
+  Logs:     ~/Library/Logs/tradelogue-sync.log
+
+  The hours below are LOCAL to your Mac and assume a US market session: shortly
+  after the close, again in the evening, and once the next morning. Adjust them
+  to your timezone — they are not derived from TRADING_TIMEZONE.
+
+  If npm is not at /opt/homebrew/bin (Intel Macs use /usr/local/bin), fix the
+  ProgramArguments path and the PATH entry to match `which npm`.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.tradelogue.sync</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/npm</string>
+    <string>run</string>
+    <string>sync:daily</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>__TRADELOGUE_DIR__</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict>
+      <key>Hour</key><integer>16</integer>
+      <key>Minute</key><integer>30</integer>
+    </dict>
+    <dict>
+      <key>Hour</key><integer>21</integer>
+      <key>Minute</key><integer>0</integer>
+    </dict>
+    <dict>
+      <key>Hour</key><integer>8</integer>
+      <key>Minute</key><integer>0</integer>
+    </dict>
+  </array>
+
+  <key>StandardOutPath</key>
+  <string>__HOME__/Library/Logs/tradelogue-sync.log</string>
+  <key>StandardErrorPath</key>
+  <string>__HOME__/Library/Logs/tradelogue-sync.log</string>
+</dict>
+</plist>
