@@ -2,7 +2,7 @@
  * import-journal.ts
  *
  * Imports all YYYY-MM-DD.md journal entries from a markdown journal folder
- * into the trading_journal DB. Idempotent — safe to re-run.
+ * into your Tradelogue database. Idempotent — safe to re-run.
  *
  * Usage:
  *   npx tsx scripts/import-journal.ts <journalDir>
