@@ -14,8 +14,8 @@ const interTight = Inter_Tight({
 });
 
 export const metadata: Metadata = {
-  title: "Trading Journal",
-  description: "AI-native trading journal for IBKR options day trading",
+  title: "Tradelogue",
+  description: "A local-first, AI-native trading journal for options day traders",
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

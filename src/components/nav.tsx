@@ -56,7 +56,7 @@ export function Nav({ status }: { status: HeaderStatus | null }) {
           and the session stamp on the right rail's right edge. */}
       <div className={`${headerWidth(pathname)} mx-auto px-6 h-16 flex items-center justify-between gap-3`}>
         <span className="font-display text-lg sm:text-xl text-ondark whitespace-nowrap shrink-0">
-          Trading Journal
+          Tradelogue
         </span>
         <nav className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {links.map(({ label, href }) => {
