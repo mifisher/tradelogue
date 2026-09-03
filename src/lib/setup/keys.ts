@@ -58,10 +58,20 @@ export function isSecretKey(key: string): boolean {
   return SECRET_KEYS.has(key);
 }
 
+/** Never appears in a real credential, so its presence identifies a value the
+ * UI produced rather than one a human typed. */
+export const MASK_CHAR = '…';
+
 export function maskSecret(value: string): string {
   if (value === '') return '';
-  if (value.length <= 10) return '………';
-  return `${value.slice(0, 6)}…${value.slice(-4)}`;
+  if (value.length <= 10) return MASK_CHAR.repeat(3);
+  return `${value.slice(0, 6)}${MASK_CHAR}${value.slice(-4)}`;
+}
+
+/** A masked value must never be written to .env, nor sent to a provider as if
+ * it were a credential — `postgr…ogue` reaches pg as a hostname named "base". */
+export function isMaskedValue(value: string): boolean {
+  return value.includes(MASK_CHAR);
 }
 
 export function validateUpdates(updates: Record<string, unknown>): Record<string, string> {

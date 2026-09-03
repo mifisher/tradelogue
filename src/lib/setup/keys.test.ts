@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { WRITABLE_KEYS, isSecretKey, maskSecret, validateUpdates } from './keys';
+import { WRITABLE_KEYS, isMaskedValue, isSecretKey, maskSecret, validateUpdates } from './keys';
 
 describe('validateUpdates', () => {
   it('passes through allowlisted keys', () => {
@@ -86,5 +86,24 @@ describe('maskSecret', () => {
 
   it('returns an empty string unchanged so "unset" stays visible', () => {
     expect(maskSecret('')).toBe('');
+  });
+});
+
+describe('isMaskedValue', () => {
+  // The bug this guards: a masked connection string sent to pg is parsed as a
+  // host, and the user is told "getaddrinfo ENOTFOUND base" — which reads like
+  // a broken database rather than an untouched field.
+  it('recognises a value the UI masked', () => {
+    expect(isMaskedValue(maskSecret('postgresql://trader:trader@localhost:5432/tradelogue'))).toBe(true);
+    expect(isMaskedValue(maskSecret('abcd'))).toBe(true);
+  });
+
+  it('does not flag a real credential', () => {
+    expect(isMaskedValue('sk-or-v1-0123456789abcdef')).toBe(false);
+    expect(isMaskedValue('postgresql://trader:trader@localhost:5432/tradelogue')).toBe(false);
+  });
+
+  it('does not flag an empty value', () => {
+    expect(isMaskedValue('')).toBe(false);
   });
 });
