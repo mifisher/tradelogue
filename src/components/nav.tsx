@@ -16,6 +16,7 @@ const links = [
   { label: 'Setups', href: '/setups' },
   { label: 'Rules', href: '/rules' },
   { label: 'Import', href: '/import' },
+  { label: 'Settings', href: '/settings' },
 ];
 
 const STATE_DOT: Record<HeaderStatus['state'], string> = {
@@ -47,7 +48,13 @@ function SessionStamp({ status }: { status: HeaderStatus }) {
   );
 }
 
-export function Nav({ status }: { status: HeaderStatus | null }) {
+export function Nav({
+  status,
+  incomplete,
+}: {
+  status: HeaderStatus | null;
+  incomplete?: boolean;
+}) {
   const pathname = usePathname();
 
   return (
@@ -76,6 +83,16 @@ export function Nav({ status }: { status: HeaderStatus | null }) {
               </Link>
             );
           })}
+          {/* AI or IBKR still unconfigured: the app works, but a headline
+              feature is switched off and nothing else would say so. */}
+          {incomplete && !pathname.startsWith('/setup') && (
+            <Link
+              href="/setup"
+              className="shrink-0 rounded-full border border-loss px-3 sm:px-4 py-1.5 text-sm font-semibold text-loss whitespace-nowrap"
+            >
+              Finish setup
+            </Link>
+          )}
           <ModeToggle />
         </nav>
         {status && <SessionStamp status={status} />}
