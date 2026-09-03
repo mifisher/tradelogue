@@ -1,6 +1,4 @@
-/** The masking character used by maskSecret. A value still containing it was
- * never typed by a human. */
-const MASK_CHAR = '…';
+import { isMaskedValue } from './keys';
 
 /** Which fields actually changed, and therefore should be written.
  *
@@ -17,7 +15,7 @@ export function setupPayload(
 
   for (const [key, value] of Object.entries(values)) {
     if (value === (initial[key] ?? '')) continue;
-    if (maskedKeys.has(key) && value.includes(MASK_CHAR)) continue;
+    if (maskedKeys.has(key) && isMaskedValue(value)) continue;
     payload[key] = value;
   }
   return payload;

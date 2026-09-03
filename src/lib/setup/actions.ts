@@ -5,7 +5,7 @@ import { promisify } from 'node:util';
 import { Pool } from 'pg';
 import { z } from 'zod';
 import { readEnvFile, writeEnvUpdates } from './env-file';
-import { isSecretKey, maskSecret, validateUpdates } from './keys';
+import { isMaskedValue, isSecretKey, maskSecret, validateUpdates } from './keys';
 import { describeAiError, describeError, type TestResult } from './test-result';
 import {
   generateStructuredObject,
@@ -47,14 +47,26 @@ export async function saveSetup(updates: Record<string, string>): Promise<void> 
   await writeEnvUpdates(validateUpdates(updates));
 }
 
+/** Secrets reach the browser masked, so a field the user has not retyped still
+ * holds `postgr…ogue` rather than the credential. Testing that verbatim fails
+ * in a way that looks like a broken credential — pg reports the mask's middle
+ * as an unresolvable hostname — so an unedited value falls back to what is
+ * already on disk. The real value never leaves the server. */
+async function resolveSecret(key: string, provided: string): Promise<string> {
+  const value = provided.trim();
+  if (value && !isMaskedValue(value)) return value;
+  return (await readEnvFile())[key]?.trim() ?? '';
+}
+
 export async function testDatabase(
   url: string,
 ): Promise<TestResult & { schemaReady: boolean }> {
-  if (!url.trim()) {
+  const connectionString = await resolveSecret('DATABASE_URL', url);
+  if (!connectionString) {
     return { ok: false, schemaReady: false, message: 'Enter a connection string first.' };
   }
 
-  const pool = new Pool({ connectionString: url, connectionTimeoutMillis: 5000 });
+  const pool = new Pool({ connectionString, connectionTimeoutMillis: 5000 });
   try {
     // to_regclass answers null rather than raising for a missing table, so one
     // round trip distinguishes "wrong url" from "right url, not migrated yet".
@@ -96,9 +108,14 @@ export async function testAi(input: {
   apiKey: string;
   model: string;
 }): Promise<TestResult> {
-  if (!input.apiKey.trim()) return { ok: false, message: 'Enter an API key first.' };
+  // openrouter -> OPENROUTER_API_KEY, anthropic -> ANTHROPIC_API_KEY, and so on.
+  const apiKey = await resolveSecret(
+    `${input.provider.toUpperCase()}_API_KEY`,
+    input.apiKey,
+  );
+  if (!apiKey) return { ok: false, message: 'Enter an API key first.' };
 
-  const config = testConfig(input.provider, input.apiKey, input.model);
+  const config = testConfig(input.provider, apiKey, input.model);
   try {
     // A real round trip rather than an auth-only probe: this is the cheapest
     // request that proves the key, the model name, and the base URL together,
@@ -123,12 +140,13 @@ export async function testIbkr(input: {
   token: string;
   queryId: string;
 }): Promise<TestResult> {
-  if (!input.token.trim() || !input.queryId.trim()) {
+  const token = await resolveSecret('IBKR_FLEX_TOKEN', input.token);
+  if (!token || !input.queryId.trim()) {
     return { ok: false, message: 'Enter both a token and a query ID first.' };
   }
   try {
     const xml = await fetchFlexStatement({
-      token: input.token.trim(),
+      token,
       queryId: input.queryId.trim(),
       maxAttempts: 2,
       delayMs: 3000,
@@ -145,11 +163,12 @@ export async function testIbkr(input: {
 }
 
 export async function testTavily(apiKey: string): Promise<TestResult> {
-  if (!apiKey.trim()) return { ok: false, message: 'Enter an API key first.' };
+  const key = await resolveSecret('TAVILY_API_KEY', apiKey);
+  if (!key) return { ok: false, message: 'Enter an API key first.' };
   try {
     const res = await fetch('https://api.tavily.com/search', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey.trim()}` },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
       body: JSON.stringify({ query: 'market open', max_results: 1 }),
     });
     if (!res.ok) {
@@ -162,10 +181,11 @@ export async function testTavily(apiKey: string): Promise<TestResult> {
 }
 
 export async function testFinnhub(apiKey: string): Promise<TestResult> {
-  if (!apiKey.trim()) return { ok: false, message: 'Enter an API key first.' };
+  const key = await resolveSecret('FINNHUB_API_KEY', apiKey);
+  if (!key) return { ok: false, message: 'Enter an API key first.' };
   try {
     const res = await fetch(
-      `https://finnhub.io/api/v1/quote?symbol=SPY&token=${encodeURIComponent(apiKey.trim())}`,
+      `https://finnhub.io/api/v1/quote?symbol=SPY&token=${encodeURIComponent(key)}`,
     );
     if (!res.ok) {
       return { ok: false, message: `Finnhub rejected the key (${res.status}).` };
@@ -181,7 +201,10 @@ export async function runMigrations(
 ): Promise<{ ok: boolean; output: string }> {
   // The url is passed explicitly because process.env still holds whatever was
   // loaded at boot — which, on a first run, is nothing.
-  const env = { ...process.env, DATABASE_URL: databaseUrl.trim() };
+  const env = {
+    ...process.env,
+    DATABASE_URL: await resolveSecret('DATABASE_URL', databaseUrl),
+  };
   const opts = { cwd: process.cwd(), env, timeout: 120_000 };
   try {
     // execFile buffers rather than streams. These two commands are short and
