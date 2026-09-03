@@ -3007,3 +3007,38 @@ are implemented as specified. Each is cheap to reverse:
 3. **Recommended model names are offered behind a button** (Task 12) rather than
    prefilled, so this component does not become a second place stale model names
    live.
+
+---
+
+## Deviations found during execution
+
+Recorded here rather than silently folded in, because both were found by
+verification steps and both changed the design.
+
+1. **Masked secrets broke every connection test** (found at Task 15, Step 4).
+   Secrets reach the browser masked, and the test buttons sent that mask
+   straight to the provider. `testDatabase` handed `postgr…ogue` to `pg`, which
+   parsed the mask's middle as a hostname and reported
+   `getaddrinfo ENOTFOUND base` — a message that reads like a broken database
+   rather than an untouched field. The same would have hit the AI, IBKR,
+   Tavily, and Finnhub tests.
+
+   Fixed by adding `resolveSecret(key, provided)` to `actions.ts`: a value that
+   is empty or still carries the mask character falls back to what is already
+   in `.env`, server-side. `MASK_CHAR` and `isMaskedValue` moved into `keys.ts`
+   so `form-payload.ts` and `actions.ts` share one definition instead of two,
+   and `keys.test.ts` gained three tests for the predicate.
+
+2. **Task 5 was written test-and-implementation together**, not test-first.
+   Verified after the fact by mutation: disabling the `AiTruncatedError` branch
+   fails exactly one test, and restoring it passes. The test has teeth.
+
+Two plan steps could not run as written. `npm run verify:pnl` (Task 1, Step 5)
+exits before touching the database when no P&L baseline exists, so it proves
+nothing about the Proxy binding; a real `select().from().limit()` and a
+`count(*)` against three tables were run instead, and later `npm run
+seed:setups` exercised `insert().onConflictDoUpdate()`. The fresh-clone
+rehearsal (Task 16, Step 5) could not use the dev server, which keeps
+`DATABASE_URL` in `process.env` from boot even after the file is removed; a
+production server was started on another port with no `.env` instead, which
+boots genuinely unconfigured.
