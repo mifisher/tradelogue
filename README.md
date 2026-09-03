@@ -108,29 +108,31 @@ docker compose up -d
 
 If you use Docker, change the port in `DATABASE_URL` to `5433`.
 
-### 3. Configure
-
-```bash
-cp .env.example .env
-```
-
-Open `.env`. To get the app running you only need `DATABASE_URL` and
-`NEXT_PUBLIC_TRADING_TIMEZONE`. Everything else unlocks a feature and can wait.
-
-### 4. Create the schema and seed the example setup
-
-```bash
-npm run db:push && npm run seed:setups
-```
-
-### 5. Run it
+### 3. Run it
 
 ```bash
 npm run dev
 ```
 
-Open http://localhost:3000. It will be empty until you import trades — that is
-next.
+Open http://localhost:3000. On a fresh clone this is the setup wizard: it walks
+you through the connection string, your timezone, your AI provider and keys, and
+the IBKR Flex Query — each with a button that verifies the value before you
+commit to it, and instructions on where to get it.
+
+Everything it collects is written to `.env`, which is gitignored. You can edit
+that file by hand instead if you prefer; see `.env.example` for the annotated
+list, and the sections below for what each setting does. Both routes end in the
+same place.
+
+The wizard can also create the schema and seed the example setup for you. To do
+that from a terminal instead:
+
+```bash
+npm run db:push && npm run seed:setups
+```
+
+Once you are running, `/settings` has the same forms for rotating a key or
+swapping a model later. It will be empty until you import trades — that is next.
 
 ---
 
@@ -234,6 +236,11 @@ Set `OPENROUTER_MODEL` as the fallback for all five, then override the ones
 that matter with `OPENROUTER_VOICE_MODEL`, `OPENROUTER_COACH_MODEL`, and so on.
 The same `_COACH_MODEL` / `_VOICE_MODEL` / `_CHAT_MODEL` / `_JUDGE_MODEL` /
 `_BRIEF_MODEL` suffixes work for `MOONSHOT_` and `ANTHROPIC_` too.
+
+Changing any of this from `/settings` writes `.env` and the dev server reloads
+itself. Under `next start` there is no watcher, so restart it yourself — and a
+timezone change needs a rebuild, because `NEXT_PUBLIC_TRADING_TIMEZONE` is
+inlined at build time.
 
 ---
 
