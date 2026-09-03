@@ -59,19 +59,17 @@ export default async function CoachPage() {
           missingMessage={missingMessage}
         />
 
-      {enabled ? (
         <Card>
           <h2 className="font-display text-xl text-ondark mb-6">Ask your journal</h2>
-          <CoachChat />
+          {enabled ? (
+            <CoachChat />
+          ) : (
+            <p className="text-mute text-sm">
+              {missingMessage} Restart the dev server after updating{' '}
+              <code className="bg-deep rounded px-1.5 py-0.5 text-ondark text-[13px]">.env</code>.
+            </p>
+          )}
         </Card>
-      ) : (
-        <Card>
-          <p className="text-mute text-sm">
-            {missingMessage} Restart the dev server after updating{' '}
-            <code className="bg-deep rounded px-1.5 py-0.5 text-ondark text-[13px]">.env</code>.
-          </p>
-        </Card>
-      )}
       </div>
     </div>
   );
