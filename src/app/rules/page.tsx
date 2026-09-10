@@ -1,6 +1,7 @@
 import { RulesManager } from '@/components/rules-manager';
 import { getLatestPatternAnalysis } from '@/lib/pattern-analysis-actions';
 import { getTradingRules } from '@/lib/trading-rules';
+import { PageShell } from '@/components/page-shell';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,7 +35,7 @@ export default async function RulesPage() {
   }));
 
   return (
-    <main className="max-w-[1200px] mx-auto px-6 py-12">
+    <PageShell>
       <div className="mb-8">
         <h1 className="font-display text-3xl text-ondark">Rules</h1>
         <p className="mt-2 max-w-3xl text-sm text-stone leading-relaxed">
@@ -46,6 +47,6 @@ export default async function RulesPage() {
         initialRules={ruleRows}
         candidates={ruleCandidatesFromAnalysis(patternAnalysis)}
       />
-    </main>
+    </PageShell>
   );
 }

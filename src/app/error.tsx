@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { PageShell } from '@/components/page-shell';
 
 /** The state this exists for: DATABASE_URL is set, so the wizard gate lets the
  * app through, but the schema has never been pushed. Without this the user
@@ -11,7 +12,7 @@ export default function Error({ error }: { error: Error & { digest?: string } })
   );
 
   return (
-    <main className="max-w-xl mx-auto px-6 py-16 space-y-5">
+    <PageShell className="max-w-xl space-y-5">
       <h1 className="font-display text-2xl text-ondark">
         {databaseProblem ? 'The database is not ready' : 'Something went wrong'}
       </h1>
@@ -28,6 +29,6 @@ export default function Error({ error }: { error: Error & { digest?: string } })
           Open setup
         </Link>
       )}
-    </main>
+    </PageShell>
   );
 }

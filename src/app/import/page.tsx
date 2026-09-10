@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { PageShell } from '@/components/page-shell';
 
 export default function ImportPage() {
   const [result, setResult] = useState('');
@@ -17,7 +18,7 @@ export default function ImportPage() {
   }
 
   return (
-    <main className="max-w-xl mx-auto px-6 py-12">
+    <PageShell className="max-w-xl">
       <h1 className="font-display text-2xl mb-6">Import IBKR Flex XML</h1>
       <form onSubmit={onSubmit} className="bg-elevated rounded-[20px] p-8 space-y-6">
         <input
@@ -40,6 +41,6 @@ export default function ImportPage() {
           {result}
         </pre>
       )}
-    </main>
+    </PageShell>
   );
 }

@@ -10,6 +10,7 @@ import { PillLink } from '@/components/pill-link';
 import { AnnotationEditor } from '@/components/annotation-editor';
 import { ChartScreenshot } from '@/components/chart-screenshot';
 import { TRADING_TIMEZONE, timezoneLabel } from '@/lib/config';
+import { PageShell } from '@/components/page-shell';
 
 export const dynamic = 'force-dynamic';
 
@@ -83,7 +84,7 @@ export default async function TradePage({ params }: TradePageProps) {
       : '—';
 
   return (
-    <main className="max-w-[1200px] mx-auto px-6 py-12 space-y-6">
+    <PageShell className="space-y-6">
       {/* ── Header ── */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
@@ -184,6 +185,6 @@ export default async function TradePage({ params }: TradePageProps) {
           <p className="text-stone text-sm">This trade has no stable id and cannot be annotated.</p>
         </Card>
       )}
-    </main>
+    </PageShell>
   );
 }

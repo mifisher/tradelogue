@@ -6,6 +6,7 @@ import { Card } from '@/components/card';
 import { Pnl } from '@/components/pnl';
 import { SetupRescanButton } from '@/components/setup-rescan-button';
 import { SetupSuggestionsReview } from '@/components/setup-suggestions-review';
+import { PageShell } from '@/components/page-shell';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +18,7 @@ export default async function SetupsPage() {
   ]);
 
   return (
-    <main className="max-w-[1200px] mx-auto px-6 py-12">
+    <PageShell>
       <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
         <h1 className="font-display text-3xl text-ondark">Setups</h1>
         <SetupRescanButton />
@@ -78,6 +79,6 @@ export default async function SetupsPage() {
       </div>
 
       <SetupSuggestionsReview initialRows={setupSuggestions} />
-    </main>
+    </PageShell>
   );
 }
