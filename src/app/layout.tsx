@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Inter_Tight } from "next/font/google";
+import { cookies } from "next/headers";
 import { AppShell } from "@/components/app-shell";
 import { ThemeProvider } from "@/components/theme-provider";
 import { getBriefFreshness } from "@/lib/market-brief-actions";
@@ -34,12 +35,15 @@ async function safeStatus() {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const state = setupState();
   const status = state.needsSetup ? null : await safeStatus();
+  // The sidebar's collapsed state, read here rather than in the browser so the
+  // page renders in its final shape instead of expanding and then snapping shut.
+  const collapsed = (await cookies()).get("tradelogue-sidebar")?.value === "collapsed";
 
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${interTight.variable} min-h-screen antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="dark" disableTransitionOnChange>
-          <AppShell status={status} incomplete={state.incomplete}>
+          <AppShell status={status} incomplete={state.incomplete} collapsed={collapsed}>
             {/* No DATABASE_URL means no page can render, so every route shows
                 the wizard. /setup's own page is the same component, so there
                 is nothing to redirect and no loop to guard against. */}

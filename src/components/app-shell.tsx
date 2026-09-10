@@ -176,19 +176,36 @@ function SessionStamp({ status }: { status: HeaderStatus }) {
 export function AppShell({
   status,
   incomplete,
+  collapsed: initialCollapsed = false,
   children,
 }: {
   status: HeaderStatus | null;
   incomplete?: boolean;
+  /** From the sidebar cookie. The root layout reads it on the server so the
+   * page renders in its final shape, rather than expanded and then snapping
+   * shut after hydration. */
+  collapsed?: boolean;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
 
+  const [collapsed, setCollapsed] = useState(initialCollapsed);
+  const toggleCollapsed = () => {
+    const next = !collapsed;
+    setCollapsed(next);
+    // Named per app, and read under the same name by the root layout. Cookies
+    // are scoped by host, not port, so two apps on localhost would share one.
+    document.cookie = `tradelogue-sidebar=${next ? 'collapsed' : 'expanded'}; path=/; max-age=31536000; samesite=lax`;
+  };
+  // Both apply from lg up only: the mobile overlay always shows labels.
+  const rail = collapsed ? 'lg:justify-center lg:px-0' : '';
+  const labelCls = collapsed ? 'lg:sr-only' : undefined;
+
   const item = (href: string) => {
     const active = href === '/' ? pathname === href : pathname.startsWith(href);
-    return `flex items-center gap-3 rounded-[12px] px-3 py-2 text-sm font-semibold transition-colors ${
+    return `flex items-center gap-3 rounded-[12px] px-3 py-2 text-sm font-semibold transition-colors ${rail} ${
       active ? 'bg-cobalt text-on-cobalt' : 'text-mute hover:bg-elevated hover:text-ondark'
     }`;
   };
@@ -210,6 +227,18 @@ export function AppShell({
                 {open ? <path d="M5 5l10 10M15 5L5 15" /> : <path d="M3 5h14M3 10h14M3 15h14" />}
               </svg>
             </button>
+            <button
+              type="button"
+              onClick={toggleCollapsed}
+              aria-expanded={!collapsed}
+              aria-controls="sidebar-menu"
+              aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              className="hidden lg:inline-flex rounded-full p-2 text-mute hover:bg-elevated hover:text-ondark"
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden>
+                <path d="M3 5h14M3 10h14M3 15h14" />
+              </svg>
+            </button>
             <span className="font-display text-lg sm:text-xl text-ondark whitespace-nowrap">
               Tradelogue
             </span>
@@ -224,14 +253,20 @@ export function AppShell({
       <div className="lg:flex">
         <aside
           id="sidebar-menu"
-          className={`${open ? 'block' : 'hidden'} fixed inset-x-0 top-16 bottom-0 z-40 bg-canvas lg:block lg:sticky lg:inset-auto lg:top-16 lg:h-[calc(100vh-4rem)] lg:w-60 lg:shrink-0 lg:bg-transparent lg:border-r border-hairline`}
+          className={`${open ? 'block' : 'hidden'} fixed inset-x-0 top-16 bottom-0 z-40 bg-canvas lg:block lg:sticky lg:inset-auto lg:top-16 lg:h-[calc(100vh-4rem)] ${collapsed ? 'lg:w-16' : 'lg:w-60'} lg:shrink-0 lg:bg-transparent lg:border-r border-hairline`}
         >
           <div className="h-full flex flex-col gap-6 px-3 py-4 overflow-y-auto">
             <nav className="flex flex-col gap-0.5">
               {links.map(({ label, href, icon }) => (
-                <Link key={href} href={href} onClick={close} className={item(href)}>
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={close}
+                  title={collapsed ? label : undefined}
+                  className={item(href)}
+                >
                   <Icon>{icon}</Icon>
-                  {label}
+                  <span className={labelCls}>{label}</span>
                 </Link>
               ))}
             </nav>
@@ -244,15 +279,21 @@ export function AppShell({
                 <Link
                   href="/setup"
                   onClick={close}
-                  className="flex items-center gap-3 rounded-[12px] border border-loss px-3 py-2 text-sm font-semibold text-loss"
+                  title={collapsed ? 'Finish setup' : undefined}
+                  className={`flex items-center gap-3 rounded-[12px] border border-loss px-3 py-2 text-sm font-semibold text-loss ${rail}`}
                 >
                   <Icon>{ALERT_ICON}</Icon>
-                  Finish setup
+                  <span className={labelCls}>Finish setup</span>
                 </Link>
               )}
-              <Link href="/settings" onClick={close} className={item('/settings')}>
+              <Link
+                href="/settings"
+                onClick={close}
+                title={collapsed ? 'Settings' : undefined}
+                className={item('/settings')}
+              >
                 <Icon>{SETTINGS_ICON}</Icon>
-                Settings
+                <span className={labelCls}>Settings</span>
               </Link>
             </div>
           </div>
