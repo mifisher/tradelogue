@@ -4,6 +4,7 @@ import { computeStats } from '@/lib/stats';
 import { fmtPct, fmtMoney } from '@/lib/format';
 import { Card } from '@/components/card';
 import { TradesTable } from '@/components/trades-table';
+import { PageShell } from '@/components/page-shell';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,7 +53,7 @@ export default async function SetupDetailPage({ params }: SetupDetailPageProps) 
     : null;
 
   return (
-    <main className="max-w-[1200px] mx-auto px-6 py-12">
+    <PageShell>
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
@@ -126,6 +127,6 @@ export default async function SetupDetailPage({ params }: SetupDetailPageProps) 
           <TradesTable rows={taggedTrades} showDate />
         )}
       </Card>
-    </main>
+    </PageShell>
   );
 }

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Inter_Tight } from "next/font/google";
-import { Nav } from "@/components/nav";
+import { AppShell } from "@/components/app-shell";
 import { ThemeProvider } from "@/components/theme-provider";
 import { getBriefFreshness } from "@/lib/market-brief-actions";
 import { headerStatus } from "@/lib/header-status";
@@ -39,11 +39,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${interTight.variable} min-h-screen antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="dark" disableTransitionOnChange>
-          <Nav status={status} incomplete={state.incomplete} />
-          {/* No DATABASE_URL means no page can render, so every route shows the
-              wizard. /setup's own page is the same component, so there is
-              nothing to redirect and no loop to guard against. */}
-          {state.needsSetup ? <SetupGate /> : children}
+          <AppShell status={status} incomplete={state.incomplete}>
+            {/* No DATABASE_URL means no page can render, so every route shows
+                the wizard. /setup's own page is the same component, so there
+                is nothing to redirect and no loop to guard against. */}
+            {state.needsSetup ? <SetupGate /> : children}
+          </AppShell>
         </ThemeProvider>
       </body>
     </html>

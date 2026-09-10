@@ -4,12 +4,12 @@ import { aiConfigured } from '@/lib/ai/client';
 import { getAiConfig, missingApiKeyMessage } from '@/lib/ai/provider';
 import { CoachChat } from '@/components/coach-chat';
 import { Card } from '@/components/card';
-import { PAGE_NARROW } from '@/lib/layout';
 import {
   PatternAnalysisPanel,
   type PatternAnalysisViewData,
 } from '@/components/pattern-analysis-panel';
 import { getLatestPatternAnalysis } from '@/lib/pattern-analysis-actions';
+import { PageShell } from '@/components/page-shell';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,7 +49,7 @@ export default async function CoachPage() {
   const patternAnalysis = toPatternAnalysisViewData(await getLatestPatternAnalysis());
 
   return (
-    <div className={`${PAGE_NARROW} mx-auto px-6 py-12`}>
+    <PageShell>
       <h1 className="font-display text-3xl text-ondark mb-8">Coach</h1>
 
       <div className="space-y-8">
@@ -71,6 +71,6 @@ export default async function CoachPage() {
           )}
         </Card>
       </div>
-    </div>
+    </PageShell>
   );
 }

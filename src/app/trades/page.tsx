@@ -7,6 +7,7 @@ import { Pnl } from '@/components/pnl';
 import { PillLink } from '@/components/pill-link';
 import { TradesTable } from '@/components/trades-table';
 import { TickerSelect } from '@/components/ticker-select';
+import { PageShell } from '@/components/page-shell';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,7 +79,7 @@ export default async function TradesPage({ searchParams }: TradesPageProps) {
   }
 
   return (
-    <main className="max-w-[1200px] mx-auto px-6 py-12">
+    <PageShell>
       <h1 className="font-display text-3xl text-ondark mb-6">Trades</h1>
 
       {/* ── Filter bar ── */}
@@ -133,6 +134,6 @@ export default async function TradesPage({ searchParams }: TradesPageProps) {
           <TradesTable rows={capped} showDate={true} grades={grades} />
         )}
       </Card>
-    </main>
+    </PageShell>
   );
 }

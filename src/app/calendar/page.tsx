@@ -3,6 +3,7 @@ import { monthView } from '@/lib/calendar';
 import { Pnl } from '@/components/pnl';
 import { PillLink } from '@/components/pill-link';
 import { MonthGrid } from '@/components/month-grid';
+import { PageShell } from '@/components/page-shell';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,7 +50,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
   const nextLabel = prevNextLabel(mv.nextYm);
 
   return (
-    <main className="max-w-[1200px] mx-auto px-6 py-12">
+    <PageShell>
       {/* Header */}
       <div className="flex items-start justify-between gap-4 mb-6 flex-wrap">
         <div>
@@ -85,7 +86,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
       ) : (
         <MonthGrid mv={mv} journaledDates={journaledDatesArr} />
       )}
-    </main>
+    </PageShell>
   );
 }
 

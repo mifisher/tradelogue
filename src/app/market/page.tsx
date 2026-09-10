@@ -7,6 +7,7 @@ import { EarningsWeek } from '@/components/earnings-week';
 import { EconCalendar } from '@/components/econ-calendar';
 import { earningsWindow } from '@/lib/market/brief-time';
 import { sessionDate } from '@/lib/daily-pnl';
+import { PageShell } from '@/components/page-shell';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,14 +61,14 @@ export default async function MarketPage() {
 
   if (!config.configured) {
     return (
-      <main className="max-w-[1200px] mx-auto px-6 py-16">
+      <PageShell>
         <h1 className="font-display text-3xl text-ondark mb-6">Market</h1>
         <Card title="Market brief not configured">
           <p className="text-sm text-mute">
             Add {config.missing.join(', ')} to your .env to enable the daily market brief.
           </p>
         </Card>
-      </main>
+      </PageShell>
     );
   }
 
@@ -83,8 +84,8 @@ export default async function MarketPage() {
   const redditRows = (brief?.redditScan ?? []).filter((r) => typeof r?.ticker === 'string' && r.ticker);
 
   return (
-    <main className="max-w-[1200px] mx-auto px-6 pb-24">
-      <section className="py-10 flex flex-wrap items-end justify-between gap-4">
+    <PageShell>
+      <section className="pb-10 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl text-ondark">Market</h1>
           {row && (
@@ -269,7 +270,7 @@ export default async function MarketPage() {
           )}
         </>
       )}
-    </main>
+    </PageShell>
   );
 }
 

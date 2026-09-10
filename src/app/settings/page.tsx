@@ -1,11 +1,11 @@
 import { loadSetupValues } from '@/lib/setup/actions';
 import { setupState } from '@/lib/setup/state';
-import { PAGE_NARROW } from '@/lib/layout';
 import { DatabaseSection } from '@/components/setup/database-section';
 import { TradingDaySection } from '@/components/setup/trading-day-section';
 import { AiSection } from '@/components/setup/ai-section';
 import { IbkrSection } from '@/components/setup/ibkr-section';
 import { MarketSection } from '@/components/setup/market-section';
+import { PageShell } from '@/components/page-shell';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +15,7 @@ export default async function SettingsPage() {
   const shared = { initial: values, masked };
 
   return (
-    <div className={`${PAGE_NARROW} mx-auto px-6 py-12 space-y-6`}>
+    <PageShell className="space-y-6">
       <header className="space-y-2">
         <h1 className="font-display text-3xl text-ondark">Settings</h1>
         <p className="text-mute text-sm leading-relaxed max-w-2xl">
@@ -32,6 +32,6 @@ export default async function SettingsPage() {
       <AiSection {...shared} done={state.ai} />
       <IbkrSection {...shared} done={state.ibkr} />
       <MarketSection {...shared} done={state.market} />
-    </div>
+    </PageShell>
   );
 }

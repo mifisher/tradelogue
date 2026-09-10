@@ -32,12 +32,12 @@ import { patternFocusPreview } from '@/lib/pattern-analysis';
 import { getRuleConfigs } from '@/lib/trading-rules';
 import { MarketStrip } from '@/components/market-strip';
 import { IndexSnapshotsCard } from '@/components/index-snapshots-card';
-import { PAGE_WIDE } from '@/lib/layout';
 import { TodayEconCard } from '@/components/today-econ-card';
 import { TodayEarningsCard } from '@/components/today-earnings-card';
 import { getLatestMarketBrief, getMarketBriefConfig } from '@/lib/market-brief-actions';
 import { underlyings } from '@/lib/queries';
 import { timezoneLabel } from '@/lib/config';
+import { PageShell } from '@/components/page-shell';
 
 export const dynamic = 'force-dynamic';
 
@@ -155,12 +155,77 @@ export default async function Home() {
   // showing another day's tape as if it were this one.
   const marketBriefContent = marketBrief.row?.brief ?? null;
 
+  // PageShell's rail column: today's market context first, then the
+  // session history.
+  const rail = (
+    <>
+      {/* Today's tape, mirroring /market. Hidden entirely until the brief is
+          configured, the same way MarketStrip stays out of the way. The
+          snapshot card handles a missing or stale brief itself, so it shows
+          even when there is no content to filter. */}
+      {marketConfig.configured && (
+        <IndexSnapshotsCard row={marketBrief.row} todayPt={todayPT} />
+      )}
+      {marketConfig.configured && marketBriefContent && (
+        <>
+          <TodayEconCard events={marketBriefContent.econCalendar} todayPt={todayPT} />
+          <TodayEarningsCard
+            earnings={marketBriefContent.earnings}
+            todayPt={todayPT}
+            tradedTickers={tradedTickers}
+          />
+        </>
+      )}
+
+      <Card title="Recent sessions">
+        {/* Column headers */}
+        <div className="flex items-center justify-between mb-2 pb-2 border-b border-divider">
+          <span className="text-stone text-[13px] uppercase tracking-wide">Date</span>
+          <div className="flex items-center gap-8">
+            <span className="text-stone text-[13px] uppercase tracking-wide w-12 text-right">Trades</span>
+            <span className="text-stone text-[13px] uppercase tracking-wide w-24 text-right">P&amp;L</span>
+          </div>
+        </div>
+
+        <div className="divide-y divide-divider">
+          {recentDays.map((d) => (
+            <Link
+              key={d.day}
+              href={`/day/${d.day}`}
+              className="flex items-center justify-between py-3 first:pt-0 last:pb-0 hover:bg-lift -mx-8 px-8 transition-colors"
+            >
+              <span className="text-ondark text-sm font-semibold">
+                {new Date(d.day + 'T12:00:00Z').toLocaleDateString('en-US', {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                  timeZone: 'UTC',
+                })}
+              </span>
+              <div className="flex items-center gap-8">
+                <span className="text-stone text-sm tabular w-12 text-right">{d.tradeCount}</span>
+                <span className="tabular text-sm w-24 text-right">
+                  <Pnl value={d.pnl} />
+                </span>
+              </div>
+            </Link>
+          ))}
+        </div>
+
+        <div className="mt-6 pt-4 border-t border-divider">
+          <Link
+            href="/calendar"
+            className="text-stone hover:text-ondark text-sm transition-colors"
+          >
+            View calendar →
+          </Link>
+        </div>
+      </Card>
+    </>
+  );
+
   return (
-    <main className={`${PAGE_WIDE} mx-auto px-6 pb-24`}>
-      {/* ── Two-column page: main content (left) + full-length rail (right) ── */}
-      <div className="pt-16 grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px] items-start">
-      {/* ── Left column: all primary content ── */}
-      <div className="min-w-0">
+    <PageShell rail={rail}>
       <section className="mb-8">
         {/* Kicker */}
         <p className="text-[13px] uppercase tracking-widest text-stone mb-3">
@@ -407,74 +472,6 @@ export default async function Home() {
           <p className="text-sm text-gain">✓ No violations recorded across all sessions</p>
         )}
       </Card>
-      </div>
-
-      {/* ── Right rail: today's market context first, then the session history ── */}
-      <div className="flex flex-col gap-8">
-        {/* Today's tape, mirroring /market. Hidden entirely until the brief is
-            configured, the same way MarketStrip stays out of the way. The
-            snapshot card handles a missing or stale brief itself, so it shows
-            even when there is no content to filter. */}
-        {marketConfig.configured && (
-          <IndexSnapshotsCard row={marketBrief.row} todayPt={todayPT} />
-        )}
-        {marketConfig.configured && marketBriefContent && (
-          <>
-            <TodayEconCard events={marketBriefContent.econCalendar} todayPt={todayPT} />
-            <TodayEarningsCard
-              earnings={marketBriefContent.earnings}
-              todayPt={todayPT}
-              tradedTickers={tradedTickers}
-            />
-          </>
-        )}
-
-        <Card title="Recent sessions">
-          {/* Column headers */}
-          <div className="flex items-center justify-between mb-2 pb-2 border-b border-divider">
-            <span className="text-stone text-[13px] uppercase tracking-wide">Date</span>
-            <div className="flex items-center gap-8">
-              <span className="text-stone text-[13px] uppercase tracking-wide w-12 text-right">Trades</span>
-              <span className="text-stone text-[13px] uppercase tracking-wide w-24 text-right">P&amp;L</span>
-            </div>
-          </div>
-
-          <div className="divide-y divide-divider">
-            {recentDays.map((d) => (
-              <Link
-                key={d.day}
-                href={`/day/${d.day}`}
-                className="flex items-center justify-between py-3 first:pt-0 last:pb-0 hover:bg-lift -mx-8 px-8 transition-colors"
-              >
-                <span className="text-ondark text-sm font-semibold">
-                  {new Date(d.day + 'T12:00:00Z').toLocaleDateString('en-US', {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                    timeZone: 'UTC',
-                  })}
-                </span>
-                <div className="flex items-center gap-8">
-                  <span className="text-stone text-sm tabular w-12 text-right">{d.tradeCount}</span>
-                  <span className="tabular text-sm w-24 text-right">
-                    <Pnl value={d.pnl} />
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-
-          <div className="mt-6 pt-4 border-t border-divider">
-            <Link
-              href="/calendar"
-              className="text-stone hover:text-ondark text-sm transition-colors"
-            >
-              View calendar →
-            </Link>
-          </div>
-        </Card>
-      </div>
-      </div>
-    </main>
+    </PageShell>
   );
 }

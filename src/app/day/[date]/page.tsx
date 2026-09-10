@@ -23,6 +23,7 @@ import { AiCoaching } from '@/components/ai-coaching';
 import { getCoachingReview } from '@/lib/ai-actions';
 import { SyncButton } from '@/components/sync-button';
 import { getRuleConfigs } from '@/lib/trading-rules';
+import { PageShell } from '@/components/page-shell';
 
 export const dynamic = 'force-dynamic';
 
@@ -129,7 +130,7 @@ export default async function DayPage({ params }: DayPageProps) {
   }
 
   return (
-    <main className="max-w-[1200px] mx-auto px-6 py-12 space-y-6">
+    <PageShell className="space-y-6">
       {/* ── Header block ── */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         {/* Left: date + P&L */}
@@ -274,6 +275,6 @@ export default async function DayPage({ params }: DayPageProps) {
       <Card title="Screenshots">
         <AttachmentGallery sessionDate={date} attachments={attachmentList} />
       </Card>
-    </main>
+    </PageShell>
   );
 }
