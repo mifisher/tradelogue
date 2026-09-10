@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { BriefRefreshButton } from '@/components/brief-refresh-button';
 import { ModeToggle } from '@/components/mode-toggle';
 import type { HeaderStatus } from '@/lib/header-status';
-import { headerWidth } from '@/lib/layout';
+import { PAGE_WIDE } from '@/lib/layout';
 
 const links = [
   { label: 'Dashboard', href: '/' },
@@ -59,9 +59,9 @@ export function Nav({
 
   return (
     <header className="sticky top-0 z-50 bg-canvas/90 backdrop-blur border-b border-hairline">
-      {/* px-6 matches the pages exactly: the brand sits on the hero's left edge
-          and the session stamp on the right rail's right edge. */}
-      <div className={`${headerWidth(pathname)} mx-auto px-6 h-16 flex items-center justify-between gap-3`}>
+      {/* One width on every route, so the brand never moves. PAGE_WIDE matches
+          the dashboard's shell and is the only one wide enough for the nav. */}
+      <div className={`${PAGE_WIDE} mx-auto px-6 h-16 flex items-center justify-between gap-3`}>
         <span className="font-display text-lg sm:text-xl text-ondark whitespace-nowrap shrink-0">
           Tradelogue
         </span>
