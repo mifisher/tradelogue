@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { getTradeByExecId, getSetups, getAttachmentsByExecId } from '@/lib/queries';
+import { getTradeByExecId, getSetups, getAttachmentsByExecId, closedTrades } from '@/lib/queries';
 import { tradeLabel } from '@/lib/trade-label';
 import { fmtHold } from '@/lib/format';
 import { aiConfigured } from '@/lib/ai/client';
@@ -76,6 +76,16 @@ export default async function TradePage({ params }: TradePageProps) {
       })
     : '';
 
+  // Prev/next trade within the same session, chronological like the day view.
+  const siblings = sessionDate
+    ? (await closedTrades({ from: sessionDate, to: sessionDate }))
+        .filter((t) => t.firstExecId != null)
+        .sort((a, b) => a.openedAt.getTime() - b.openedAt.getTime())
+    : [];
+  const here = siblings.findIndex((t) => t.firstExecId === trade.firstExecId);
+  const prevTrade = here > 0 ? siblings[here - 1] : null;
+  const nextTrade = here >= 0 && here < siblings.length - 1 ? siblings[here + 1] : null;
+
   const setupOptions = setupRows.map((s) => ({ number: s.number, name: s.name }));
   const aiConfig = getAiConfig();
   const setupName =
@@ -102,6 +112,16 @@ export default async function TradePage({ params }: TradePageProps) {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {prevTrade && (
+            <PillLink href={`/trade/${encodeURIComponent(prevTrade.firstExecId!)}`} active={false}>
+              ← {tradeLabel(prevTrade)}
+            </PillLink>
+          )}
+          {nextTrade && (
+            <PillLink href={`/trade/${encodeURIComponent(nextTrade.firstExecId!)}`} active={false}>
+              {tradeLabel(nextTrade)} →
+            </PillLink>
+          )}
           {sessionDate && (
             <PillLink href={`/day/${sessionDate}`} active={false}>
               ← {longDate}
