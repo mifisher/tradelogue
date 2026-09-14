@@ -1,5 +1,7 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTradeByExecId, getSetups, getAttachmentsByExecId, closedTrades } from '@/lib/queries';
+import type { TradeRow } from '@/lib/queries';
 import { tradeLabel } from '@/lib/trade-label';
 import { fmtHold } from '@/lib/format';
 import { aiConfigured } from '@/lib/ai/client';
@@ -37,6 +39,22 @@ function MetricRow({ label, value }: { label: string; value: React.ReactNode }) 
       <dt className="text-[13px] uppercase tracking-wide text-stone shrink-0">{label}</dt>
       <dd className="text-sm text-ondark text-right tabular break-words min-w-0">{value}</dd>
     </div>
+  );
+}
+
+/** Prev/next pill — stays in place, greyed out, when there is no neighbouring trade. */
+function NavPill({ trade, label }: { trade: TradeRow | null; label: string }) {
+  if (!trade?.firstExecId) {
+    return (
+      <span className="rounded-full px-4 py-1.5 text-sm font-semibold bg-elevated text-stone opacity-40">
+        {label}
+      </span>
+    );
+  }
+  return (
+    <PillLink href={`/trade/${encodeURIComponent(trade.firstExecId)}`} active={false}>
+      {label}
+    </PillLink>
   );
 }
 
@@ -112,24 +130,8 @@ export default async function TradePage({ params }: TradePageProps) {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {prevTrade && (
-            <PillLink href={`/trade/${encodeURIComponent(prevTrade.firstExecId!)}`} active={false}>
-              ← {tradeLabel(prevTrade)}
-            </PillLink>
-          )}
-          {nextTrade && (
-            <PillLink href={`/trade/${encodeURIComponent(nextTrade.firstExecId!)}`} active={false}>
-              {tradeLabel(nextTrade)} →
-            </PillLink>
-          )}
-          {sessionDate && (
-            <PillLink href={`/day/${sessionDate}`} active={false}>
-              ← {longDate}
-            </PillLink>
-          )}
-          <PillLink href="/trades" active={false}>
-            All trades
-          </PillLink>
+          <NavPill trade={prevTrade} label="← Previous trade" />
+          <NavPill trade={nextTrade} label="Next trade →" />
         </div>
       </div>
 
@@ -148,8 +150,9 @@ export default async function TradePage({ params }: TradePageProps) {
               </Card>
             </div>
 
-            {/* Trade metrics */}
-            <Card title="Trade metrics" className="h-full">
+            {/* Right column: metrics + the rest of the session */}
+            <div className="space-y-6">
+            <Card title="Trade metrics">
               <dl className="divide-y divide-divider">
                 <MetricRow label={`Opened (${timezoneLabel()})`} value={TZ_TIME.format(trade.openedAt)} />
                 <MetricRow
@@ -168,6 +171,53 @@ export default async function TradePage({ params }: TradePageProps) {
                 <MetricRow label="Grade" value={annotation?.grade ?? '—'} />
               </dl>
             </Card>
+
+            {siblings.length > 0 && (
+              <Card title="Session trades">
+                <ul className="-mx-2 space-y-1">
+                  {siblings.map((t) => {
+                    const current = t.firstExecId === trade.firstExecId;
+                    const body = (
+                      <>
+                        <span className="min-w-0">
+                          <span className={`block truncate ${current ? 'text-ondark font-semibold' : 'text-mute'}`}>
+                            {tradeLabel(t)}
+                          </span>
+                          <span className="block text-[13px] text-stone tabular">
+                            {TZ_TIME.format(t.openedAt)}
+                          </span>
+                        </span>
+                        <Pnl value={t.realizedPnl ?? 0} className="text-sm shrink-0" />
+                      </>
+                    );
+                    return (
+                      <li key={t.id}>
+                        {current ? (
+                          <div className="flex items-center justify-between gap-3 rounded-xl bg-lift px-2 py-2 text-sm">
+                            {body}
+                          </div>
+                        ) : (
+                          <Link
+                            href={`/trade/${encodeURIComponent(t.firstExecId!)}`}
+                            className="flex items-center justify-between gap-3 rounded-xl px-2 py-2 text-sm hover:bg-lift transition-colors"
+                          >
+                            {body}
+                          </Link>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                <Link
+                  href={`/day/${sessionDate}`}
+                  className="mt-5 block text-sm text-stone hover:text-ondark transition-colors"
+                >
+                  {longDate} →
+                </Link>
+              </Card>
+            )}
+            </div>
           </div>
 
           {/* ── Trade notes (full width, below) ── */}
