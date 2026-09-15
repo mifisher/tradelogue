@@ -7,6 +7,8 @@ import type { AssetQuote } from '@/lib/market/brief-schema';
 interface IndexSnapshotsCardProps {
   row: MarketBriefRow | null;
   todayPt: string;
+  /** Off on /market itself, where the link would point at the current page. */
+  showBriefLink?: boolean;
 }
 
 /** Thousands-separated to 2dp — indexes stay unchanged, BTC stays readable. */
@@ -55,7 +57,7 @@ function AssetRow({ asset }: { asset: AssetQuote }) {
  * Prices show only when the brief is the current session's. A stale quote
  * rendered as a live one is the worst thing this card could do, so an old brief
  * gets the date instead of numbers. */
-export function IndexSnapshotsCard({ row, todayPt }: IndexSnapshotsCardProps) {
+export function IndexSnapshotsCard({ row, todayPt, showBriefLink = true }: IndexSnapshotsCardProps) {
   const isToday = row?.briefDate === todayPt;
   const assets = isToday ? orderAssets(row?.quotes?.assets ?? []) : [];
 
@@ -74,9 +76,13 @@ export function IndexSnapshotsCard({ row, todayPt }: IndexSnapshotsCardProps) {
       )}
 
       <div className="mt-6 pt-4 border-t border-divider flex items-baseline justify-between gap-2">
-        <Link href="/market" className="text-stone hover:text-ondark text-sm transition-colors">
-          Full brief →
-        </Link>
+        {showBriefLink ? (
+          <Link href="/market" className="text-stone hover:text-ondark text-sm transition-colors">
+            Full brief →
+          </Link>
+        ) : (
+          <span />
+        )}
         {row && isToday && (
           <span className="text-[13px] text-stone">
             <EventTime utc={row.quotes?.asOfUtc ?? row.generatedAt.toISOString()} />
