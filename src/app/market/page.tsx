@@ -8,6 +8,7 @@ import { EconCalendar } from '@/components/econ-calendar';
 import { earningsWindow } from '@/lib/market/brief-time';
 import { sessionDate } from '@/lib/daily-pnl';
 import { PageShell } from '@/components/page-shell';
+import { IndexSnapshotsCard } from '@/components/index-snapshots-card';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,7 +85,7 @@ export default async function MarketPage() {
   const redditRows = (brief?.redditScan ?? []).filter((r) => typeof r?.ticker === 'string' && r.ticker);
 
   return (
-    <PageShell>
+    <PageShell rail={<IndexSnapshotsCard row={row} todayPt={todayPt} showBriefLink={false} />}>
       <section className="pb-10 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl text-ondark">Market</h1>
