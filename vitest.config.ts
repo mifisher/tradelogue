@@ -14,7 +14,7 @@ export default defineConfig({
       RULE_REENTRY_PAUSE_MIN: '10',
       RULE_CIRCUIT_BREAKER: '-500',
       RULE_CHOP_TRADE_CAP: '3',
-      RULE_SESSION_OPEN_HOUR: '10',
+      RULE_OPENING_RANGE_MIN: '30',
     },
   },
   resolve: { alias: { '@': path.resolve(__dirname, 'src') } },

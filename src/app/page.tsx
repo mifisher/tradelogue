@@ -38,6 +38,7 @@ import { getLatestMarketBrief, getMarketBriefConfig } from '@/lib/market-brief-a
 import { underlyings } from '@/lib/queries';
 import { timezoneLabel } from '@/lib/config';
 import { PageShell } from '@/components/page-shell';
+import { GoalsCard } from '@/components/goals/goals-card';
 
 export const dynamic = 'force-dynamic';
 
@@ -176,6 +177,8 @@ export default async function Home() {
           />
         </>
       )}
+
+      <GoalsCard />
 
       <Card title="Recent sessions">
         {/* Column headers */}

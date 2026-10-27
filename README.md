@@ -46,10 +46,10 @@ a cache. That means imports are idempotent: run them as often as you like.
 and per-trade grades. A calendar and a trades table over the whole history.
 
 **Mechanical rule detection** (`src/lib/rules.ts`) — no AI, just pure functions
-over your fills. The engine implements seven detectors: oversized outlay,
-re-entry without a pause, multiple names open at once, 0DTE contracts,
-overtrading a chop day, trading through your daily loss limit, and entering in
-the opening chop. Because it is deterministic, it is honest — it flags what you
+over your fills. The engine implements eight detectors: oversized option
+outlay, re-entry without a pause, multiple names open at once, 0DTE contracts,
+overtrading a chop day, too many trades in a session, trading through your
+daily loss limit, and entering in the opening chop. Because it is deterministic, it is honest — it flags what you
 actually did, not what a model guessed you did.
 
 A fresh install seeds **one** sample rule, because a rulebook is personal.
@@ -61,6 +61,18 @@ watch — grounded in that session's real numbers and your own rulebook.
 
 **Pattern analysis.** The same coach model run across your whole journal to
 surface recurring behavior rather than single-session noise.
+
+**Goals** (`/goals`). Pattern analysis ends with suggested experiments ("cap
+yourself at 3 trades a session for 10 sessions"). Start one and it becomes your
+goal: the model attaches a mechanical check, which you can edit — max trades
+per session, max option outlay, daily loss stop, re-entry pause, no entries in
+the opening window, no 0DTE — or a yes/no you answer in the day journal when no
+check fits. One goal runs at a time. Each journaled session after you start is
+scored hit or miss by the same detectors as your rules, and a goals card on the
+dashboard, trade, and day pages shows progress. After the last session you get
+before/after numbers (day win rate, P&L per session, expectancy, trades per
+session) against your previous sessions, and choose: make it a rule (it
+replaces any rule with the same check), extend it 10 sessions, or close it.
 
 **Chat with your journal** (`/coach`). A tool-use loop over five read-only data
 tools: daily P&L, trades, sessions, violation summary, setup stats. It queries
@@ -409,33 +421,40 @@ first run, so the UI is the source of truth: add, edit, disable, and delete
 freely. Rules you create there are *reflective* — they appear in your rulebook
 and in the AI coaching prompt, but nothing fires automatically.
 
-To add a rule the engine checks **automatically**, copy one of the six entries
+To add a rule the engine checks **automatically**, copy one of the seven entries
 from `DETECTOR_TEMPLATES` in `src/lib/rules.ts` into `DEFAULT_RULE_CONFIGS`
 above it, renumber if you like, and restart. The available detectors:
 
 | Detector | Checks |
 | --- | --- |
-| `oversized-outlay` | Position cost above your cap *(the shipped sample)* |
+| `oversized-outlay` | Option position cost above your cap; stock is exempt *(the shipped sample)* |
 | `reentry-pause` | Re-entering a name too soon after a losing exit |
 | `single-name-at-once` | A second underlying opened while one is still live |
 | `zero-dte` | Contracts expiring the same session |
 | `chop-trade-cap` | Too many trades on an Uncertain tape |
 | `circuit-breaker` | Opening a new trade after your daily loss limit |
-| `opening-range-entry` | Entries before the opening chop has settled |
+| `opening-range-entry` | Entries in the first minutes after the 09:30 ET open |
+| `max-trades-per-session` | More closed trades in a session than your cap |
 
 Detectors bind by **detector name, not rule number**, so renumbering your rules
 never silently breaks detection.
 
-Their thresholds come from `.env`. The shipped values are round placeholders,
-not recommendations:
+Their thresholds come from `.env`, unless a rule carries its own (rules made
+from a goal do). The shipped values are round placeholders, not
+recommendations:
 
 ```
 RULE_OUTLAY_CAP=1000          # oversized-outlay:    max position cost, dollars
 RULE_REENTRY_PAUSE_MIN=10     # reentry-pause:       minutes before re-entering
 RULE_CIRCUIT_BREAKER=-500     # circuit-breaker:     stop once day P&L hits this
 RULE_CHOP_TRADE_CAP=3         # chop-trade-cap:      max trades on chop
-RULE_SESSION_OPEN_HOUR=10     # opening-range-entry: entries before this hour
+RULE_OPENING_RANGE_MIN=30     # opening-range-entry: minutes after the 09:30 ET open
 ```
+
+**Upgrading:** `RULE_SESSION_OPEN_HOUR` (an hour on your own clock, which was
+wrong for anyone outside US Eastern) is replaced by `RULE_OPENING_RANGE_MIN`,
+measured from the 09:30 ET open. If you had set it, set the new one instead;
+the old value is ignored. Then run `npm run db:push` for the goals tables.
 
 ### Your setups
 

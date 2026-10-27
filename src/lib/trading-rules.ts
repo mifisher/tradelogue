@@ -3,6 +3,7 @@ import { db } from '@/db';
 import { tradingRules } from '@/db/schema';
 import { ALL_DETECTORS, DEFAULT_RULE_CONFIGS } from '@/lib/rules';
 import type { RuleConfig, RuleDetector } from '@/lib/rules';
+import { isValidDetectorThreshold } from '@/lib/goals';
 
 export type TradingRuleRow = typeof tradingRules.$inferSelect;
 
@@ -23,6 +24,7 @@ export function tradingRuleToConfig(row: TradingRuleRow): RuleConfig {
     description: row.description,
     enabled: row.enabled,
     detector: toDetector(row.detector),
+    threshold: row.threshold,
   };
 }
 
@@ -65,8 +67,19 @@ export async function getRuleConfigs(): Promise<RuleConfig[]> {
   return rows.map(tradingRuleToConfig);
 }
 
-export async function nextTradingRuleNumber(): Promise<number> {
-  const rows = await db
+/** `db` or a transaction handle, so rule inserts can join a caller's transaction. */
+export type DbExecutor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+export interface NewTradingRule {
+  title: string;
+  description: string;
+  enabled: boolean;
+  detector: RuleDetector | null;
+  threshold: number | null;
+}
+
+export async function nextTradingRuleNumber(executor: DbExecutor = db): Promise<number> {
+  const rows = await executor
     .select({ ruleNumber: tradingRules.ruleNumber })
     .from(tradingRules)
     .orderBy(desc(tradingRules.ruleNumber))
@@ -76,4 +89,29 @@ export async function nextTradingRuleNumber(): Promise<number> {
   // inserted yet.
   const highestSeeded = DEFAULT_RULE_CONFIGS.reduce((max, r) => Math.max(max, r.rule), 0);
   return Math.max(rows[0]?.ruleNumber ?? 0, highestSeeded) + 1;
+}
+
+/** Insert a rule (caller has cleaned title/description). Thresholds get the
+ *  same bounds as the goal check that uses the detector. */
+export async function insertTradingRule(
+  executor: DbExecutor,
+  rule: NewTradingRule,
+): Promise<{ id: number; ruleNumber: number }> {
+  if (!isValidDetectorThreshold(rule.detector, rule.threshold)) {
+    throw new Error('That threshold does not fit this rule check');
+  }
+  const ruleNumber = await nextTradingRuleNumber(executor);
+  const rows = await executor
+    .insert(tradingRules)
+    .values({
+      ruleNumber,
+      title: rule.title,
+      description: rule.description,
+      enabled: rule.enabled,
+      detector: rule.detector,
+      threshold: rule.threshold,
+      source: rule.detector ? 'mechanical' : 'manual',
+    })
+    .returning({ id: tradingRules.id, ruleNumber: tradingRules.ruleNumber });
+  return rows[0];
 }

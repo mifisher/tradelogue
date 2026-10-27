@@ -1,6 +1,8 @@
 import {
-  pgTable, serial, text, bigint, doublePrecision, timestamp, jsonb, integer, boolean,
+  pgTable, serial, text, bigint, doublePrecision, timestamp, jsonb, integer, boolean, uniqueIndex, unique,
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import type { GoalCheckType, GoalStatus } from '../lib/goals';
 import type { SetupSuggestion } from '../lib/setup-suggestions';
 import type { PatternExperiment, PatternInsight } from '../lib/pattern-analysis';
 import type { BriefQuotes, StoredBriefContent, BriefSourceLink } from '../lib/market/brief-schema';
@@ -106,6 +108,7 @@ export const tradingRules = pgTable('trading_rules', {
   description: text('description').notNull(),
   enabled: boolean('enabled').notNull().default(true),
   detector: text('detector'),
+  threshold: doublePrecision('threshold'), // null = DEFAULT_THRESHOLDS[detector]
   source: text('source').notNull().default('manual'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -161,3 +164,31 @@ export const marketBriefs = pgTable('market_briefs', {
   model: text('model'),
   error: text('error'),
 });
+
+export const goals = pgTable('goals', {
+  id: serial('id').primaryKey(),
+  title: text('title').notNull(),
+  hypothesis: text('hypothesis').notNull(),
+  protocol: text('protocol').notNull(),
+  successMetric: text('success_metric').notNull(),
+  checkType: text('check_type').$type<GoalCheckType>().notNull(),
+  threshold: doublePrecision('threshold'),
+  targetSessions: integer('target_sessions').notNull().default(10),
+  startedOn: text('started_on').notNull(),   // YYYY-MM-DD in TRADING_TIMEZONE, for display
+  closedOn: text('closed_on'),
+  status: text('status').$type<GoalStatus>().notNull().default('active'),
+  ruleId: integer('rule_id').references(() => tradingRules.id),
+  // Counting is keyed on this instant, not startedOn: a session whose first
+  // trade opened before the goal was started belongs to the baseline.
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  // One active goal at a time — enforced here, not in app code.
+  uniqueIndex('goals_one_active').on(t.status).where(sql`${t.status} = 'active'`),
+]);
+
+export const goalCheckins = pgTable('goal_checkins', {
+  id: serial('id').primaryKey(),
+  goalId: integer('goal_id').notNull().references(() => goals.id),
+  sessionDate: text('session_date').notNull(),
+  hit: boolean('hit').notNull(),
+}, (t) => [unique('goal_checkins_goal_session').on(t.goalId, t.sessionDate)]);

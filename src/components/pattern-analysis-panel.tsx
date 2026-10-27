@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import { generatePatternAnalysis } from '@/lib/pattern-analysis-actions';
 import type { PatternExperiment, PatternInsight } from '@/lib/pattern-analysis';
 import { fmtMoney } from '@/lib/format';
+import { StartGoalDialog } from '@/components/goals/start-goal-dialog';
 
 export interface PatternAnalysisViewData {
   dateRangeFrom: string;
@@ -26,6 +27,7 @@ interface PatternAnalysisPanelProps {
   analysis: PatternAnalysisViewData | null;
   enabled: boolean;
   missingMessage: string;
+  goalActive: boolean;
 }
 
 const SECTION_LABEL_CLASS = 'text-[13px] uppercase tracking-wide text-stone font-medium';
@@ -67,7 +69,7 @@ function InsightSection({ title, items }: { title: string; items: PatternInsight
   );
 }
 
-function ExperimentsSection({ items }: { items: PatternExperiment[] }) {
+function ExperimentsSection({ items, goalActive }: { items: PatternExperiment[]; goalActive: boolean }) {
   if (items.length === 0) return null;
   return (
     <section>
@@ -76,6 +78,10 @@ function ExperimentsSection({ items }: { items: PatternExperiment[] }) {
         {items.map((item, index) => (
           <article key={index} className="rounded-[12px] border border-hairline bg-deep p-4">
             <h3 className="font-display text-lg text-ondark">{item.title}</h3>
+            <div className="mt-3 flex items-center gap-3">
+              <StartGoalDialog experiment={item} disabled={goalActive} />
+              {goalActive && <span className="text-[12px] text-stone">A goal is already active</span>}
+            </div>
             <p className="mt-2 text-sm text-mute leading-relaxed">{item.hypothesis}</p>
             <p className="mt-3 text-sm text-ondark leading-relaxed">
               <span className="text-stone">Protocol: </span>
@@ -96,6 +102,7 @@ export function PatternAnalysisPanel({
   analysis,
   enabled,
   missingMessage,
+  goalActive,
 }: PatternAnalysisPanelProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -172,7 +179,7 @@ export function PatternAnalysisPanel({
           <InsightSection title="Strengths to lean into" items={analysis.strengthsToLeanInto} />
           <InsightSection title="Recurring mistakes" items={analysis.recurringMistakes} />
           <InsightSection title="Blind spots" items={analysis.blindSpots} />
-          <ExperimentsSection items={analysis.nextExperiments} />
+          <ExperimentsSection items={analysis.nextExperiments} goalActive={goalActive} />
         </div>
       )}
     </section>

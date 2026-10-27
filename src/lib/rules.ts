@@ -6,7 +6,8 @@ import {
   REENTRY_PAUSE_MIN,
   CIRCUIT_BREAKER,
   CHOP_TRADE_CAP,
-  SESSION_OPEN_HOUR,
+  OPENING_RANGE_MIN,
+  timezoneLabel,
 } from '@/lib/config';
 // Detects mechanically-checkable violations from trade execution data + session
 // sentiment. Computed on demand; never persisted.
@@ -39,14 +40,31 @@ export interface RuleViolation {
   detail: string;               // human sentence with the numbers
 }
 
-export type RuleDetector =
-  | 'oversized-outlay'
-  | 'reentry-pause'
-  | 'single-name-at-once'
-  | 'zero-dte'
-  | 'chop-trade-cap'
-  | 'circuit-breaker'
-  | 'opening-range-entry';
+/** Every detector the engine implements. */
+export const ALL_DETECTORS = [
+  'oversized-outlay',
+  'reentry-pause',
+  'single-name-at-once',
+  'zero-dte',
+  'chop-trade-cap',
+  'circuit-breaker',
+  'opening-range-entry',
+  'max-trades-per-session',
+] as const;
+
+export type RuleDetector = typeof ALL_DETECTORS[number];
+
+/** Default threshold per detector (from .env — see src/lib/config.ts); null = takes no number. */
+export const DEFAULT_THRESHOLDS: Record<RuleDetector, number | null> = {
+  'oversized-outlay': OUTLAY_CAP,             // max option position cost, dollars
+  'reentry-pause': REENTRY_PAUSE_MIN,         // minutes after a losing exit on the same name
+  'single-name-at-once': null,
+  'zero-dte': null,
+  'chop-trade-cap': CHOP_TRADE_CAP,           // max trades on an Uncertain tape
+  'circuit-breaker': CIRCUIT_BREAKER,         // stop opening once day P&L ≤ this
+  'opening-range-entry': OPENING_RANGE_MIN,   // minutes after the 09:30 ET open
+  'max-trades-per-session': 3,                // max closed trades in a session
+};
 
 export interface RuleConfig {
   rule: number;
@@ -54,7 +72,11 @@ export interface RuleConfig {
   description: string;
   enabled: boolean;
   detector: RuleDetector | null;
+  /** Detector threshold; null/undefined = DEFAULT_THRESHOLDS[detector]. */
+  threshold?: number | null;
 }
+
+export type DetectorFinding = Pick<RuleViolation, 'scope' | 'firstExecId' | 'detail'>;
 
 // ── RULES catalogue ──────────────────────────────────────────────────────────
 
@@ -80,7 +102,7 @@ export const DEFAULT_RULE_CONFIGS: RuleConfig[] = [
   {
     rule: 1,
     title: 'Maximum position outlay',
-    description: `Position cost (contracts × avg-entry × 100) must not exceed $${OUTLAY_CAP}. Large outlay amplifies risk on options that can go to zero. Set RULE_OUTLAY_CAP in .env to match your account.`,
+    description: `Position cost (contracts × avg-entry × 100) must not exceed $${OUTLAY_CAP} on options (stock is exempt). Large outlay amplifies risk on options that can go to zero. Set RULE_OUTLAY_CAP in .env to match your account.`,
     enabled: true,
     detector: 'oversized-outlay',
   },
@@ -136,21 +158,17 @@ export const DETECTOR_TEMPLATES: RuleConfig[] = [
   {
     rule: 7,
     title: 'Opening-range caution',
-    description: `The first 30–45 minutes after the open (before ${SESSION_OPEN_HOUR}:00 local) is chop. Entries before then are flagged. Set RULE_SESSION_OPEN_HOUR for your timezone and style.`,
+    description: `The first 30–45 minutes after the 09:30 ET open is chop. Entries in the first ${OPENING_RANGE_MIN} minutes are flagged. Set RULE_OPENING_RANGE_MIN to match your style.`,
     enabled: true,
     detector: 'opening-range-entry',
   },
-];
-
-/** Every detector the engine implements. */
-export const ALL_DETECTORS: RuleDetector[] = [
-  'oversized-outlay',
-  'reentry-pause',
-  'single-name-at-once',
-  'zero-dte',
-  'chop-trade-cap',
-  'circuit-breaker',
-  'opening-range-entry',
+  {
+    rule: 8,
+    title: 'Maximum trades per session',
+    description: `Stop after ${DEFAULT_THRESHOLDS['max-trades-per-session']} closed trades in a session, whatever the tape. Overtrading turns a plan into a slot machine.`,
+    enabled: true,
+    detector: 'max-trades-per-session',
+  },
 ];
 
 export const RULES: Record<number, { title: string; description: string }> =
@@ -163,29 +181,34 @@ export const RULES: Record<number, { title: string; description: string }> =
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Return the hour (0-23) of a UTC Date in TRADING_TIMEZONE. */
-const TZ_HOUR_FMT = new Intl.DateTimeFormat('en-US', {
-  timeZone: TRADING_TIMEZONE,
+/** HH:MM in New York — the exchange's clock, independent of where the user is. */
+const ET_HM_FMT = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'America/New_York',
   hour: 'numeric',
-  hour12: false,
+  minute: 'numeric',
+  hourCycle: 'h23',
 });
 
-function ptHour(d: Date): number {
-  // hour12:false gives '0'–'23'; Intl may return '24' for midnight in some
-  // engines, but in practice openedAt is never midnight.
-  return parseInt(TZ_HOUR_FMT.format(d), 10);
+const MARKET_OPEN_MIN = 9 * 60 + 30;
+
+/** Minutes between the 9:30 ET regular-session open and `d` (negative pre-market). */
+export function minutesAfterOpen(d: Date): number {
+  const parts = ET_HM_FMT.formatToParts(d);
+  const h = Number(parts.find((p) => p.type === 'hour')!.value);
+  const m = Number(parts.find((p) => p.type === 'minute')!.value);
+  return h * 60 + m - MARKET_OPEN_MIN;
 }
 
-/** Format a Date to HH:MM in TRADING_TIMEZONE (for detail strings). */
-const TZ_TIME_FMT = new Intl.DateTimeFormat('en-US', {
+/** HH:MM in TRADING_TIMEZONE, for detail strings (pair with timezoneLabel). */
+const LOCAL_TIME_FMT = new Intl.DateTimeFormat('en-US', {
   timeZone: TRADING_TIMEZONE,
   hour: '2-digit',
   minute: '2-digit',
   hour12: false,
 });
 
-function ptTime(d: Date): string {
-  return TZ_TIME_FMT.format(d);
+function localTime(d: Date): string {
+  return `${LOCAL_TIME_FMT.format(d)} ${timezoneLabel(d)}`;
 }
 
 /** Round a dollar amount to 2 dp for display. */
@@ -197,172 +220,132 @@ function fmtDollar(n: number): string {
 
 // ── Detection ────────────────────────────────────────────────────────────────
 
+/** Run one detector over a session. Shared by rules and goals so they never disagree. */
+export function runDetector(
+  detector: RuleDetector,
+  threshold: number | null,
+  input: SessionInput,
+): DetectorFinding[] {
+  const limit = threshold ?? DEFAULT_THRESHOLDS[detector];
+  const { sessionDate, sentiment } = input;
+  const sorted = [...input.trades].sort((a, b) => a.openedAt.getTime() - b.openedAt.getTime());
+  const out: DetectorFinding[] = [];
+  const perTrade = (firstExecId: string, detail: string) => out.push({ scope: 'trade', firstExecId, detail });
+
+  switch (detector) {
+    case 'oversized-outlay':
+      for (const t of sorted) {
+        // Options only: the cap guards premium that can go to zero. Stock has
+        // no expiry (the same signal zero-dte uses).
+        if (t.expiry === null) continue;
+        const outlay = t.quantityOpened * t.avgEntryPrice * 100;
+        if (outlay > limit!) {
+          perTrade(t.firstExecId, `Position outlay ${fmtDollar(Math.round(outlay))} exceeds the ${fmtDollar(limit!)} cap (${t.quantityOpened} contracts × $${t.avgEntryPrice} × 100).`);
+        }
+      }
+      break;
+
+    case 'reentry-pause':
+      for (let i = 0; i < sorted.length; i++) {
+        const t = sorted[i];
+        // Only the most recent prior trade on the same underlying matters.
+        const prev = sorted.slice(0, i).reverse().find((p) => p.underlying === t.underlying);
+        if (!prev || prev.realizedPnl > 0) continue;
+        const gapMin = (t.openedAt.getTime() - prev.closedAt.getTime()) / 60_000;
+        if (gapMin < limit!) {
+          perTrade(t.firstExecId, `Re-entered ${t.underlying} ${Math.floor(gapMin)}m after a losing exit (P&L ${fmtDollar(prev.realizedPnl)}); the required pause is ${limit}m.`);
+        }
+      }
+      break;
+
+    case 'single-name-at-once':
+      for (let i = 0; i < sorted.length; i++) {
+        const t = sorted[i];
+        const conflict = sorted.slice(0, i).find(
+          (p) => p.underlying !== t.underlying && t.openedAt.getTime() < p.closedAt.getTime(),
+        );
+        if (conflict) {
+          perTrade(t.firstExecId, `Opened ${t.underlying} at ${localTime(t.openedAt)} while ${conflict.underlying} was still open (closed ${localTime(conflict.closedAt)}).`);
+        }
+      }
+      break;
+
+    case 'zero-dte':
+      for (const t of sorted) {
+        if (t.expiry !== null && t.expiry === sessionDate) {
+          perTrade(t.firstExecId, `Contract expires on ${t.expiry} — same as the session date (zero DTE).`);
+        }
+      }
+      break;
+
+    case 'opening-range-entry':
+      for (const t of sorted) {
+        const mins = minutesAfterOpen(t.openedAt);
+        if (mins < limit!) {
+          const when = mins < 0 ? 'before the open' : `${mins} min after the open`;
+          perTrade(t.firstExecId, `Entered ${t.underlying} at ${localTime(t.openedAt)}, ${when} (the first ${limit} min are off-limits).`);
+        }
+      }
+      break;
+
+    case 'chop-trade-cap':
+      if (sentiment === 'Uncertain' && sorted.length > limit!) {
+        out.push({ scope: 'session', detail: `${sorted.length} trades on an Uncertain tape exceeds the ${limit}-trade cap.` });
+      }
+      break;
+
+    case 'max-trades-per-session':
+      if (sorted.length > limit!) {
+        out.push({ scope: 'session', detail: `${sorted.length} trades, limit ${limit}.` });
+      }
+      break;
+
+    case 'circuit-breaker': {
+      // Walk trades in openedAt order; once cumulative PnL ≤ limit, any later
+      // trade opening after the breaching trade closed is a violation.
+      let cumPnl = 0;
+      let breachIndex = -1;
+      let breachPnl = 0;
+      for (let i = 0; i < sorted.length; i++) {
+        cumPnl += sorted[i].realizedPnl;
+        if (breachIndex === -1 && cumPnl <= limit!) {
+          breachIndex = i;
+          breachPnl = cumPnl;
+        }
+      }
+      if (breachIndex !== -1) {
+        const breachClosedAt = sorted[breachIndex].closedAt.getTime();
+        if (sorted.slice(breachIndex + 1).some((t) => t.openedAt.getTime() >= breachClosedAt)) {
+          out.push({ scope: 'session', detail: `Continued opening trades after the day hit ${fmtDollar(Math.round(breachPnl * 100) / 100)} (circuit breaker is ${fmtDollar(limit!)}).` });
+        }
+      }
+      break;
+    }
+  }
+  return out;
+}
+
 export function detectViolations(
   input: SessionInput,
   rules: RuleConfig[] = DEFAULT_RULE_CONFIGS,
 ): RuleViolation[] {
-  const { sessionDate, sentiment, trades } = input;
   // Detectors are looked up by DETECTOR, not by rule number: rule numbers are
   // user-editable (rules can be added, renumbered, or deleted at /rules), so
   // binding a detector to a hardcoded number would silently stop detecting the
-  // moment someone reorganised their rulebook. The reported rule number comes
-  // from whichever rule actually carries the detector.
+  // moment someone reorganised their rulebook. The first enabled rule carrying
+  // a detector reports it, with that rule's own threshold.
   const byDetector = new Map<RuleDetector, RuleConfig>();
   for (const rule of rules) {
     if (!rule.enabled || rule.detector === null) continue;
     if (!byDetector.has(rule.detector)) byDetector.set(rule.detector, rule);
   }
-  const activeRule = (detector: RuleDetector): RuleConfig | null =>
-    byDetector.get(detector) ?? null;
-
-  // Work with trades sorted by openedAt (caller should provide this, but sort
-  // defensively to guarantee correct logic).
-  const sorted = [...trades].sort((a, b) => a.openedAt.getTime() - b.openedAt.getTime());
 
   const violations: RuleViolation[] = [];
-
-  // ── Per-trade rules ────────────────────────────────────────────────────────
-  for (let i = 0; i < sorted.length; i++) {
-    const trade = sorted[i];
-
-    // R1 — Oversized outlay
-    const r1 = activeRule('oversized-outlay');
-    const outlay = trade.quantityOpened * trade.avgEntryPrice * 100;
-    if (r1 && outlay > OUTLAY_CAP) {
-      const outlayRounded = Math.round(outlay);
-      violations.push({
-        rule: r1.rule,
-        title: r1.title,
-        scope: 'trade',
-        firstExecId: trade.firstExecId,
-        detail: `Position outlay ${fmtDollar(outlayRounded)} exceeds the ${fmtDollar(OUTLAY_CAP)} cap (${trade.quantityOpened} contracts × $${trade.avgEntryPrice} × 100).`,
-      });
-    }
-
-    // R4 — Re-entry without pause
-    // Find the most recent prior trade on the same underlying that was a loss
-    const r4 = activeRule('reentry-pause');
-    if (r4) {
-      for (let j = i - 1; j >= 0; j--) {
-        const prev = sorted[j];
-        if (prev.underlying !== trade.underlying) continue;
-        // Found the most recent prior trade on same underlying
-        if (prev.realizedPnl <= 0) {
-          const gapMs = trade.openedAt.getTime() - prev.closedAt.getTime();
-          const gapMin = gapMs / 60_000;
-          if (gapMin < REENTRY_PAUSE_MIN) {
-            const gapDisplay = `${Math.floor(gapMin)}m`;
-            violations.push({
-              rule: r4.rule,
-              title: r4.title,
-              scope: 'trade',
-              firstExecId: trade.firstExecId,
-              detail: `Re-entered ${trade.underlying} ${gapDisplay} after a losing exit (P&L ${fmtDollar(prev.realizedPnl)}); the required pause is ${REENTRY_PAUSE_MIN}m.`,
-            });
-          }
-        }
-        // Only check the most recent prior trade on same underlying
-        break;
-      }
-    }
-
-    // R6 — Multiple names at once
-    // Check if any earlier trade (different underlying) is still open when this one opens
-    const r6 = activeRule('single-name-at-once');
-    if (r6) {
-      for (let j = 0; j < i; j++) {
-        const prev = sorted[j];
-        if (prev.underlying === trade.underlying) continue;
-        // prev is open while trade opens: trade.openedAt < prev.closedAt
-        if (trade.openedAt.getTime() < prev.closedAt.getTime()) {
-          violations.push({
-            rule: r6.rule,
-            title: r6.title,
-            scope: 'trade',
-            firstExecId: trade.firstExecId,
-            detail: `Opened ${trade.underlying} at ${ptTime(trade.openedAt)} while ${prev.underlying} was still open (closed ${ptTime(prev.closedAt)}).`,
-          });
-          break; // one R6 per trade is enough — report first conflict found
-        }
-      }
-    }
-
-    // R13 — Zero-DTE contract
-    const r13 = activeRule('zero-dte');
-    if (r13 && trade.expiry !== null && trade.expiry === sessionDate) {
-      violations.push({
-        rule: r13.rule,
-        title: r13.title,
-        scope: 'trade',
-        firstExecId: trade.firstExecId,
-        detail: `Contract expires on ${trade.expiry} — same as the session date (zero DTE).`,
-      });
-    }
-
-    // R21 — Opening-range entry
-    const r21 = activeRule('opening-range-entry');
-    const hour = ptHour(trade.openedAt);
-    if (r21 && hour < SESSION_OPEN_HOUR) {
-      violations.push({
-        rule: r21.rule,
-        title: r21.title,
-        scope: 'trade',
-        firstExecId: trade.firstExecId,
-        detail: `Entered ${trade.underlying} at ${ptTime(trade.openedAt)}, before the ${SESSION_OPEN_HOUR}:00 cutoff.`,
-      });
+  for (const [detector, rule] of byDetector) {
+    for (const f of runDetector(detector, rule.threshold ?? null, input)) {
+      violations.push({ rule: rule.rule, title: rule.title, ...f });
     }
   }
-
-  // ── Session-scoped rules ───────────────────────────────────────────────────
-
-  // R15 — Overtrading a chop day
-  const r15 = activeRule('chop-trade-cap');
-  if (r15 && sentiment === 'Uncertain' && sorted.length > CHOP_TRADE_CAP) {
-    violations.push({
-      rule: r15.rule,
-      title: r15.title,
-      scope: 'session',
-      detail: `${sorted.length} trades on an Uncertain tape exceeds the ${CHOP_TRADE_CAP}-trade cap.`,
-    });
-  }
-
-  // R18 — Trading through the circuit breaker
-  // Walk trades in openedAt order; track cumulative PnL at each close.
-  // Once cumPnl ≤ CIRCUIT_BREAKER, check if any later trade opens.
-  const r18 = activeRule('circuit-breaker');
-  if (r18) {
-    let cumPnl = 0;
-    let breachCumPnl: number | null = null;
-    let breachIndex = -1;
-
-    for (let i = 0; i < sorted.length; i++) {
-      cumPnl += sorted[i].realizedPnl;
-      if (breachCumPnl === null && cumPnl <= CIRCUIT_BREAKER) {
-        breachCumPnl = cumPnl;
-        breachIndex = i;
-      }
-    }
-
-    // If breached and there are trades that opened AFTER the breaching trade closed
-    if (breachCumPnl !== null && breachIndex < sorted.length - 1) {
-      // Confirm at least one later trade opened after the breach trade's close
-      const breachClosedAt = sorted[breachIndex].closedAt.getTime();
-      const laterOpened = sorted.slice(breachIndex + 1).some(
-        (t) => t.openedAt.getTime() >= breachClosedAt,
-      );
-      if (laterOpened) {
-        violations.push({
-          rule: r18.rule,
-          title: r18.title,
-          scope: 'session',
-          detail: `Continued opening trades after the day hit ${fmtDollar(Math.round(breachCumPnl * 100) / 100)} (circuit breaker is ${fmtDollar(CIRCUIT_BREAKER)}).`,
-        });
-      }
-    }
-  }
-
-  // Sort violations by rule number for deterministic output
-  violations.sort((a, b) => a.rule - b.rule);
-
-  return violations;
+  // Stable sort: within a rule, findings stay in trade order.
+  return violations.sort((a, b) => a.rule - b.rule);
 }

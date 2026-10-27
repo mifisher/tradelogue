@@ -49,6 +49,17 @@ const links = [
     ),
   },
   {
+    label: 'Goals',
+    href: '/goals',
+    icon: (
+      <>
+        <circle cx="12" cy="12" r="10" />
+        <circle cx="12" cy="12" r="6" />
+        <circle cx="12" cy="12" r="2" />
+      </>
+    ),
+  },
+  {
     label: 'Market',
     href: '/market',
     icon: (

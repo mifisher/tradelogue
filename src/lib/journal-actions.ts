@@ -5,8 +5,8 @@ import path from 'path';
 import crypto from 'crypto';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
-import { sessions, tradeAnnotations, attachments, setups } from '@/db/schema';
-import { eq, sql } from 'drizzle-orm';
+import { sessions, tradeAnnotations, attachments, setups, goalCheckins } from '@/db/schema';
+import { and, eq, sql } from 'drizzle-orm';
 import { nextSetupNumber, type SetupSuggestion } from '@/lib/setup-suggestions';
 
 const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
@@ -52,6 +52,9 @@ export interface SessionFields {
   sleepMinutes?: number | null;
   marketContext?: string | null;
   recap?: string | null;
+  /** Self-report goal answer for this session; saved with the journal in one submit.
+   *  hit: null clears a saved answer (back to unanswered — not counted). */
+  goalCheckin?: { goalId: number; hit: boolean | null } | null;
 }
 
 export async function saveSession(
@@ -87,6 +90,25 @@ export async function saveSession(
         updatedAt: new Date(),
       },
     });
+
+  if (fields.goalCheckin) {
+    const { goalId, hit } = fields.goalCheckin;
+    if (hit === null) {
+      await db
+        .delete(goalCheckins)
+        .where(and(eq(goalCheckins.goalId, goalId), eq(goalCheckins.sessionDate, sessionDate)));
+    } else {
+      await db
+        .insert(goalCheckins)
+        .values({ goalId, sessionDate, hit })
+        .onConflictDoUpdate({
+          target: [goalCheckins.goalId, goalCheckins.sessionDate],
+          set: { hit },
+        });
+    }
+    safeRevalidate('/goals');
+    safeRevalidate('/');
+  }
 
   safeRevalidate('/day/' + sessionDate);
 }
