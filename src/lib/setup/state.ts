@@ -24,7 +24,8 @@ function set(env: Env, key: string): boolean {
  * root layout on every request, so it stays a pure object read. */
 export function setupState(env: Env = process.env): SetupState {
   const database = set(env, 'DATABASE_URL');
-  const timezone = set(env, 'NEXT_PUBLIC_TRADING_TIMEZONE');
+  // Blank falls back to the system zone, so there is always a usable one.
+  const timezone = true;
   // Delegated so "AI is configured" cannot drift from what the AI features test.
   const ai = isAiConfigured(getAiConfig(env));
   // Mirrors syncFromIbkr: a token plus either query id.
