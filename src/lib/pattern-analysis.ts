@@ -13,6 +13,9 @@ export const PatternExperimentSchema = z.object({
   hypothesis: z.string(),
   protocol: z.string(),
   successMetric: z.string(),
+  // Loose on purpose: validated per experiment by normalizeCheck() so one bad
+  // value can't fail the whole analysis. Older stored analyses have no check.
+  check: z.object({ type: z.string(), threshold: z.number().nullable() }).optional(),
 });
 
 export const PatternAnalysisOutputSchema = z.object({

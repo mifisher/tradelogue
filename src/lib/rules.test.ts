@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ALL_DETECTORS, DEFAULT_RULE_CONFIGS, DETECTOR_TEMPLATES, detectViolations } from './rules';
+import { ALL_DETECTORS, DEFAULT_RULE_CONFIGS, DETECTOR_TEMPLATES, detectViolations, minutesAfterOpen, runDetector } from './rules';
 import type { RuleConfig, RuleTrade, SessionInput } from './rules';
 
 // ── helper ─────────────────────────────────────────────────────────────────
@@ -528,5 +528,82 @@ describe('detail string formatting', () => {
     }));
     const r7 = violations.filter((v) => v.rule === 7);
     expect(r7[0].detail).toContain('09:35');
+  });
+});
+
+// ── Per-rule thresholds, market-clock open, max-trades, stock ───────────────
+
+describe('detectViolations — per-rule threshold', () => {
+  const custom = (over: Partial<RuleConfig>): RuleConfig => ({
+    rule: 23, title: 'Goal: $500 cap', description: 'd', enabled: true,
+    detector: 'oversized-outlay', ...over,
+  });
+
+  it('uses the rule\'s own threshold over the env default', () => {
+    // 2 × $3.00 × 100 = $600 > $500
+    const v = detectViolations(
+      session({ trades: [mkTrade({ quantityOpened: 2, avgEntryPrice: 3 })] }),
+      [custom({ threshold: 500 })],
+    );
+    expect(v).toHaveLength(1);
+    expect(v[0]).toMatchObject({ rule: 23, title: 'Goal: $500 cap' });
+    expect(v[0].detail).toContain('$500');
+  });
+
+  it('falls back to the env default when threshold is null', () => {
+    const v = detectViolations(
+      session({ trades: [mkTrade({ quantityOpened: 2, avgEntryPrice: 3 })] }),
+      [custom({ threshold: null })],
+    );
+    expect(v).toHaveLength(0); // $600 is under the $1,000 default
+  });
+});
+
+describe('max-trades-per-session detector', () => {
+  it('fires above the cap regardless of sentiment', () => {
+    const f = runDetector('max-trades-per-session', 3, session({
+      sentiment: 'Bullish', trades: [mkTrade(), mkTrade(), mkTrade(), mkTrade()],
+    }));
+    expect(f).toHaveLength(1);
+    expect(f[0].scope).toBe('session');
+    expect(f[0].detail).toBe('4 trades, limit 3.');
+  });
+
+  it('does NOT fire at exactly the cap', () => {
+    expect(runDetector('max-trades-per-session', 3, session({
+      trades: [mkTrade(), mkTrade(), mkTrade()],
+    }))).toEqual([]);
+  });
+
+  it('is a known detector', () => {
+    expect(ALL_DETECTORS).toContain('max-trades-per-session');
+  });
+});
+
+describe('minutesAfterOpen — market clock', () => {
+  it('is DST-safe in summer (EDT)', () => {
+    expect(minutesAfterOpen(new Date('2026-06-08T13:30:00Z'))).toBe(0);   // 09:30 EDT
+    expect(minutesAfterOpen(new Date('2026-06-08T14:00:00Z'))).toBe(30);  // 10:00 EDT
+  });
+  it('is DST-safe in winter (EST)', () => {
+    expect(minutesAfterOpen(new Date('2026-01-12T14:30:00Z'))).toBe(0);   // 09:30 EST
+    expect(minutesAfterOpen(new Date('2026-01-12T14:50:00Z'))).toBe(20);
+  });
+  it('opening-range rule fires inside the first 30 min in winter, not after', () => {
+    const at = (iso: string) => detect(session({
+      sessionDate: '2026-01-12',
+      trades: [mkTrade({ expiry: '2026-01-20', openedAt: new Date(iso), closedAt: new Date('2026-01-12T16:00:00Z') })],
+    })).filter((v) => v.rule === 7);
+    expect(at('2026-01-12T14:50:00Z')).toHaveLength(1); // 09:50 EST
+    expect(at('2026-01-12T15:05:00Z')).toHaveLength(0); // 10:05 EST
+  });
+});
+
+describe('oversized-outlay — options only', () => {
+  it('does NOT apply to stock, however large (10 shares × $200 = $2,000)', () => {
+    const v = detect(session({
+      trades: [mkTrade({ underlying: 'XOM', expiry: null, quantityOpened: 10, avgEntryPrice: 200 })],
+    }));
+    expect(v.filter((x) => x.rule === 1)).toHaveLength(0);
   });
 });

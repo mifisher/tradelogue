@@ -14,7 +14,11 @@ interface SessionJournalProps {
     marketContext?: string | null;
     recap?: string | null;
   } | null;
+  /** Present only while a self-report goal is active. */
+  goalCheckin?: { goalId: number; title: string; initial: boolean | null } | null;
 }
+
+type GoalAnswer = '' | 'yes' | 'no';
 
 const INPUT_CLS =
   'bg-deep border border-hairline rounded-[12px] px-4 py-3 text-sm text-ondark w-full focus:outline-none focus:border-stone';
@@ -35,11 +39,15 @@ function serialize(
   mood: string,
   marketContext: string,
   recap: string,
+  goalHit: GoalAnswer,
 ): string {
-  return [sentiment, sleepScore, sleepH, sleepM, mood, marketContext, recap].join('\x00');
+  return [sentiment, sleepScore, sleepH, sleepM, mood, marketContext, recap, goalHit].join('\x00');
 }
 
-export function SessionJournal({ sessionDate, initial }: SessionJournalProps) {
+export function SessionJournal({ sessionDate, initial, goalCheckin }: SessionJournalProps) {
+  const initialGoalHit: GoalAnswer =
+    goalCheckin?.initial == null ? '' : goalCheckin.initial ? 'yes' : 'no';
+  const [goalHit, setGoalHit] = useState<GoalAnswer>(initialGoalHit);
   const [sentiment, setSentiment] = useState(initial?.sentiment ?? '');
   const [sleepScore, setSleepScore] = useState(
     initial?.sleepScore != null ? String(initial.sleepScore) : '',
@@ -60,10 +68,11 @@ export function SessionJournal({ sessionDate, initial }: SessionJournalProps) {
       initial?.mood ?? '',
       initial?.marketContext ?? '',
       initial?.recap ?? '',
+      initialGoalHit,
     ),
   );
 
-  const isDirty = serialize(sentiment, sleepScore, sleepH, sleepM, mood, marketContext, recap) !== baseline;
+  const isDirty = serialize(sentiment, sleepScore, sleepH, sleepM, mood, marketContext, recap, goalHit) !== baseline;
   useUnsavedWarning(isDirty, `session:${sessionDate}`);
 
   const [isPending, startTransition] = useTransition();
@@ -83,8 +92,13 @@ export function SessionJournal({ sessionDate, initial }: SessionJournalProps) {
         sleepMinutes,
         marketContext: marketContext || null,
         recap: recap || null,
+        // "—" sends null, clearing any saved answer: the session goes back to
+        // "waiting on journal" rather than staying a miss.
+        goalCheckin: goalCheckin
+          ? { goalId: goalCheckin.goalId, hit: goalHit === '' ? null : goalHit === 'yes' }
+          : null,
       });
-      setBaseline(serialize(sentiment, sleepScore, sleepH, sleepM, mood, marketContext, recap));
+      setBaseline(serialize(sentiment, sleepScore, sleepH, sleepM, mood, marketContext, recap, goalHit));
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     });
@@ -110,6 +124,17 @@ export function SessionJournal({ sessionDate, initial }: SessionJournalProps) {
               <option value="Uncertain">Uncertain</option>
             </select>
           </div>
+
+          {goalCheckin && (
+            <div>
+              <label className={LABEL_CLS}>Hit the goal today? · {goalCheckin.title}</label>
+              <select value={goalHit} onChange={(e) => setGoalHit(e.target.value as GoalAnswer)} className={INPUT_CLS}>
+                <option value="">—</option>
+                <option value="yes">Yes, hit</option>
+                <option value="no">No, miss</option>
+              </select>
+            </div>
+          )}
 
           {/* Sleep */}
           <div>

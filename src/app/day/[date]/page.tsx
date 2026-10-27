@@ -24,6 +24,8 @@ import { getCoachingReview } from '@/lib/ai-actions';
 import { SyncButton } from '@/components/sync-button';
 import { getRuleConfigs } from '@/lib/trading-rules';
 import { PageShell } from '@/components/page-shell';
+import { GoalsCard } from '@/components/goals/goals-card';
+import { checkinsFor, getActiveGoal } from '@/lib/goal-queries';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,6 +52,11 @@ export default async function DayPage({ params }: DayPageProps) {
       navDates(),
       getRuleConfigs(),
     ]);
+
+  const activeGoal = await getActiveGoal();
+  const goalCheckin = activeGoal?.checkType === 'self-report'
+    ? { goalId: activeGoal.id, title: activeGoal.title, initial: (await checkinsFor(activeGoal.id)).get(date) ?? null }
+    : null;
 
   // Branch render on whether trades exist
   const hasTrades = rows.length > 0;
@@ -129,8 +136,10 @@ export default async function DayPage({ params }: DayPageProps) {
     if (ann.grade) grades[execId] = ann.grade;
   }
 
+  const rail = <GoalsCard focusDate={date} />;
+
   return (
-    <PageShell className="space-y-6">
+    <PageShell className="space-y-6" rail={rail}>
       {/* ── Header block ── */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         {/* Left: date + P&L */}
@@ -215,7 +224,7 @@ export default async function DayPage({ params }: DayPageProps) {
       {/* ── Session journal Card ── */}
       {/* Always rendered — this is the point of journal-first navigation */}
       <Card title="Journal">
-        <SessionJournal sessionDate={date} initial={sessionInitial} />
+        <SessionJournal sessionDate={date} initial={sessionInitial} goalCheckin={goalCheckin} />
       </Card>
 
       {/* ── AI coaching Card ── */}

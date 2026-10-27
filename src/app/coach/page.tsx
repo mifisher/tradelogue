@@ -10,6 +10,7 @@ import {
 } from '@/components/pattern-analysis-panel';
 import { getLatestPatternAnalysis } from '@/lib/pattern-analysis-actions';
 import { PageShell } from '@/components/page-shell';
+import { getActiveGoal } from '@/lib/goal-queries';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,6 +48,7 @@ export default async function CoachPage() {
   const enabled = aiConfigured();
   const missingMessage = missingApiKeyMessage(getAiConfig());
   const patternAnalysis = toPatternAnalysisViewData(await getLatestPatternAnalysis());
+  const goalActive = (await getActiveGoal()) !== null;
 
   return (
     <PageShell>
@@ -57,6 +59,7 @@ export default async function CoachPage() {
           analysis={patternAnalysis}
           enabled={enabled}
           missingMessage={missingMessage}
+          goalActive={goalActive}
         />
 
         <Card>

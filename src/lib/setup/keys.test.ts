@@ -54,7 +54,7 @@ describe('WRITABLE_KEYS', () => {
       'RULE_REENTRY_PAUSE_MIN',
       'RULE_CIRCUIT_BREAKER',
       'RULE_CHOP_TRADE_CAP',
-      'RULE_SESSION_OPEN_HOUR',
+      'RULE_OPENING_RANGE_MIN',
     ]) {
       expect(WRITABLE_KEYS).toContain(key);
     }

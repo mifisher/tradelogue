@@ -34,10 +34,12 @@ export const CIRCUIT_BREAKER = num(process.env.RULE_CIRCUIT_BREAKER, -500);
 export const CHOP_TRADE_CAP = num(process.env.RULE_CHOP_TRADE_CAP, 3);
 
 /**
- * R21 — entries before this hour (24h clock, TRADING_TIMEZONE) are flagged as
- * trading the opening chop. Default 10 = the first 30 min after a 09:30 open.
+ * Opening-range rule — entries in the first N minutes after the 09:30 ET
+ * regular-session open are flagged as trading the opening chop. Measured on
+ * the exchange's clock, so it means the same thing in any TRADING_TIMEZONE
+ * and across DST.
  */
-export const SESSION_OPEN_HOUR = num(process.env.RULE_SESSION_OPEN_HOUR, 10);
+export const OPENING_RANGE_MIN = num(process.env.RULE_OPENING_RANGE_MIN, 30);
 
 /**
  * Short label for TRADING_TIMEZONE ("ET", "PT", "GMT+1"…), for UI captions like

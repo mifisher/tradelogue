@@ -8,7 +8,9 @@ const mocks = vi.hoisted(() => {
   const values = vi.fn(() => ({ onConflictDoUpdate }));
   const insert = vi.fn(() => ({ values }));
   const revalidatePath = vi.fn();
-  return { insert, onConflictDoUpdate, revalidatePath, set, update, values, where };
+  const deleteWhere = vi.fn();
+  const del = vi.fn(() => ({ where: deleteWhere }));
+  return { del, deleteWhere, insert, onConflictDoUpdate, revalidatePath, set, update, values, where };
 });
 
 vi.mock('next/cache', () => ({
@@ -19,6 +21,7 @@ vi.mock('@/db', () => ({
   db: {
     insert: mocks.insert,
     update: mocks.update,
+    delete: mocks.del,
   },
 }));
 
@@ -140,5 +143,26 @@ describe('saveAnnotation', () => {
       }),
     );
     expect(mocks.revalidatePath).toHaveBeenCalledWith('/day/2026-06-26');
+  });
+});
+
+describe('saveSession — self-report goal answer', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('upserts a yes/no answer', async () => {
+    const { saveSession } = await import('./journal-actions');
+    await saveSession('2026-10-08', { goalCheckin: { goalId: 4, hit: false } });
+    expect(mocks.values).toHaveBeenCalledWith({ goalId: 4, sessionDate: '2026-10-08', hit: false });
+    expect(mocks.del).not.toHaveBeenCalled();
+  });
+
+  it('deletes the saved answer when cleared back to unanswered', async () => {
+    const { saveSession } = await import('./journal-actions');
+    await saveSession('2026-10-08', { goalCheckin: { goalId: 4, hit: null } });
+    expect(mocks.del).toHaveBeenCalledTimes(1);
+    expect(mocks.deleteWhere).toHaveBeenCalledTimes(1);
+    expect(mocks.values).not.toHaveBeenCalledWith(expect.objectContaining({ goalId: 4 }));
   });
 });

@@ -4,6 +4,12 @@ import {
   PatternAnalysisOutputSchema,
   type PatternAnalysisOutput,
 } from '@/lib/pattern-analysis';
+import { GOAL_CHECKS, GOAL_CHECK_TYPES } from '@/lib/goals';
+
+function buildChecksBlock(): string {
+  return GOAL_CHECK_TYPES.map((type) => `- ${type}: ${GOAL_CHECKS[type].prompt}`).join('\n');
+}
+
 export const PATTERN_ANALYSIS_SYSTEM = `You are a trading performance coach reviewing a day trader's full journal history. The trader day-trades US equity options and wants recurring-pattern analysis across their whole history, not a single-day review.
 
 Your job is to synthesize patterns across many sessions, not review one day. Be blunt, practical, and evidence-led. Identify the highest-leverage behaviors that will improve the equity curve. Distinguish between:
@@ -21,7 +27,9 @@ The trader's rulebook is supplied with the evidence below — cite only rule num
 - strengthsToLeanInto: 2-5 items.
 - recurringMistakes: 3-6 items.
 - blindSpots: 2-5 items.
-- nextExperiments: 2-5 items with measurable protocols.
+- nextExperiments: 2-5 items with measurable protocols, each runnable as a single 10-session experiment. Give each a "check" — the one mechanical test that decides whether a session hit the experiment — picked from:
+${buildChecksBlock()}
+  Prefer a mechanical check over self-report whenever the protocol can be read off trade data. The threshold must match the protocol's own number.
 - Every insight needs evidence. Use concise strings, not paragraphs.
 - Keep action text specific and behavioral. Avoid vague advice like "be disciplined."
 `;
@@ -42,7 +50,7 @@ const PATTERN_ANALYSIS_JSON_INSTRUCTION = `The JSON object must have this exact 
     { "title": "string", "why": "string", "action": "string", "evidence": ["string"] }
   ],
   "nextExperiments": [
-    { "title": "string", "hypothesis": "string", "protocol": "string", "successMetric": "string" }
+    { "title": "string", "hypothesis": "string", "protocol": "string", "successMetric": "string", "check": { "type": "one of the check types", "threshold": number | null } }
   ]
 }`;
 

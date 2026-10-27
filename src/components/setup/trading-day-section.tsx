@@ -9,7 +9,7 @@ const THRESHOLDS = [
   { key: 'RULE_REENTRY_PAUSE_MIN', label: 'Re-entry pause (minutes)', help: 'after a losing exit on the same name' },
   { key: 'RULE_CIRCUIT_BREAKER', label: 'Daily loss limit ($)', help: 'negative; stop opening once running P&L reaches it' },
   { key: 'RULE_CHOP_TRADE_CAP', label: 'Max trades on a chop day', help: 'on an Uncertain tape' },
-  { key: 'RULE_SESSION_OPEN_HOUR', label: 'Opening-chop cutoff (hour)', help: '24h clock; 10 = the first 30 min of a 09:30 open' },
+  { key: 'RULE_OPENING_RANGE_MIN', label: 'Opening-chop window (minutes)', help: 'after the 09:30 ET open; 30 = the first half hour' },
 ];
 
 export function TradingDaySection({
@@ -44,7 +44,7 @@ export function TradingDaySection({
           { value: '', label: `Auto — system timezone (${detected})` },
           ...zones.map((z) => ({ value: z, label: z })),
         ]}
-        help="Auto follows this machine. Set the opening-chop cutoff below in the same zone."
+        help="Auto follows this machine. Rule cutoffs below follow the 09:30 ET market open, whatever zone you pick."
       />
 
       <button

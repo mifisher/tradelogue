@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildPatternAnalysisContext,
+  PatternAnalysisOutputSchema,
   patternFocusPreview,
   type PatternAnalysisContextInput,
   type PatternAnalysisOutput,
 } from './pattern-analysis';
+import { normalizeCheck } from './goals';
 
 const BASE_INPUT: PatternAnalysisContextInput = {
   rulebook: [
@@ -131,5 +133,28 @@ describe('patternFocusPreview', () => {
       analysis.topFocusAreas[1],
       analysis.topFocusAreas[2],
     ]);
+  });
+});
+
+describe('PatternExperimentSchema — check', () => {
+  const base = {
+    summary: 's',
+    topFocusAreas: [{ title: 't', why: 'w', action: 'a', evidence: [] }],
+    strengthsToLeanInto: [], recurringMistakes: [], blindSpots: [],
+  };
+  const exp = { title: 't', hypothesis: 'h', protocol: 'p', successMetric: 'm' };
+
+  it('accepts experiments with, without, or with a bogus check type', () => {
+    const r = PatternAnalysisOutputSchema.safeParse({
+      ...base,
+      nextExperiments: [
+        { ...exp, check: { type: 'max-trades-per-session', threshold: 3 } },
+        exp,
+        { ...exp, check: { type: 'vibes', threshold: null } },
+      ],
+    });
+    expect(r.success).toBe(true);
+    const checks = r.data!.nextExperiments.map((e) => normalizeCheck(e.check));
+    expect(checks.map((c) => c.type)).toEqual(['max-trades-per-session', 'self-report', 'self-report']);
   });
 });

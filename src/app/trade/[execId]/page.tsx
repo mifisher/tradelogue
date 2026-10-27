@@ -13,6 +13,7 @@ import { AnnotationEditor } from '@/components/annotation-editor';
 import { ChartScreenshot } from '@/components/chart-screenshot';
 import { TRADING_TIMEZONE, timezoneLabel } from '@/lib/config';
 import { PageShell } from '@/components/page-shell';
+import { GoalsCard } from '@/components/goals/goals-card';
 
 export const dynamic = 'force-dynamic';
 
@@ -175,6 +176,7 @@ export default async function TradePage({ params }: TradePageProps) {
           </Link>
         </Card>
       )}
+      <GoalsCard />
     </>
   ) : null;
 

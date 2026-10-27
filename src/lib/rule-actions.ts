@@ -4,12 +4,15 @@ import { revalidatePath } from 'next/cache';
 import { eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { tradingRules } from '@/db/schema';
-import { nextTradingRuleNumber } from '@/lib/trading-rules';
+import { insertTradingRule } from '@/lib/trading-rules';
+import type { RuleDetector } from '@/lib/rules';
 
 export interface RuleInput {
   title: string;
   description: string;
   enabled?: boolean;
+  detector?: RuleDetector | null;   // create only; set when a goal is promoted
+  threshold?: number | null;
 }
 
 function safeRevalidate(path: string, type?: 'page' | 'layout') {
@@ -20,7 +23,7 @@ function safeRevalidate(path: string, type?: 'page' | 'layout') {
   }
 }
 
-function cleanRuleInput(input: RuleInput): Required<RuleInput> {
+function cleanRuleInput(input: RuleInput): { title: string; description: string; enabled: boolean } {
   const title = input.title.trim();
   const description = input.description.trim();
 
@@ -40,22 +43,13 @@ function revalidateRuleConsumers() {
 
 export async function createTradingRule(input: RuleInput): Promise<{ id: number; ruleNumber: number }> {
   const fields = cleanRuleInput(input);
-  const ruleNumber = await nextTradingRuleNumber();
-
-  const rows = await db
-    .insert(tradingRules)
-    .values({
-      ruleNumber,
-      title: fields.title,
-      description: fields.description,
-      enabled: fields.enabled,
-      detector: null,
-      source: 'manual',
-    })
-    .returning({ id: tradingRules.id, ruleNumber: tradingRules.ruleNumber });
-
+  const row = await insertTradingRule(db, {
+    ...fields,
+    detector: input.detector ?? null,
+    threshold: input.threshold ?? null,
+  });
   revalidateRuleConsumers();
-  return rows[0];
+  return row;
 }
 
 export async function updateTradingRule(id: number, input: RuleInput): Promise<void> {
