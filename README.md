@@ -392,7 +392,8 @@ trust its output.
 NEXT_PUBLIC_TRADING_TIMEZONE=America/New_York
 ```
 
-This drives every session boundary, day grouping, and rule time. Get it right
+Leave it blank to follow this machine's system timezone, or pick one under
+Settings. This drives every session boundary, day grouping, and rule time. Get it right
 first — if it is wrong, trades land on the wrong day and everything downstream
 inherits the error.
 

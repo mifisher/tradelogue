@@ -6,12 +6,14 @@
 /**
  * Timezone all session dates, "day" boundaries, and rule times are evaluated
  * in. A trade at 06:45 belongs to whichever session date this timezone says.
+ * Blank = this machine's system zone (the server runs locally, so it and the
+ * browser agree).
  *
  * NEXT_PUBLIC_ so client components format timestamps the same way the server
  * grouped them — otherwise a trade can render under the wrong day.
  */
 export const TRADING_TIMEZONE =
-  process.env.NEXT_PUBLIC_TRADING_TIMEZONE || 'America/New_York';
+  process.env.NEXT_PUBLIC_TRADING_TIMEZONE || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 function num(envVar: string | undefined, fallback: number): number {
   if (envVar === undefined || envVar.trim() === '') return fallback;

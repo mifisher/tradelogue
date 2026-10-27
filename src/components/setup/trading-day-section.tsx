@@ -24,13 +24,11 @@ export function TradingDaySection({
   const { values, set, save, saving, message, fallback } = useSectionForm({
     initial,
     masked,
-    area: 'timezone',
   });
   const [showThresholds, setShowThresholds] = useState(false);
 
   const zones = useMemo(() => Intl.supportedValuesOf('timeZone'), []);
   const detected = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
-  const zone = values.NEXT_PUBLIC_TRADING_TIMEZONE || detected;
 
   return (
     <Section
@@ -40,10 +38,13 @@ export function TradingDaySection({
     >
       <SelectField
         label="Trading timezone"
-        value={zone}
+        value={values.NEXT_PUBLIC_TRADING_TIMEZONE ?? ''}
         onChange={(v) => set('NEXT_PUBLIC_TRADING_TIMEZONE', v)}
-        options={zones.map((z) => ({ value: z, label: z }))}
-        help={`Your browser reports ${detected}. Most US options traders want America/New_York regardless of where they sit.`}
+        options={[
+          { value: '', label: `Auto — system timezone (${detected})` },
+          ...zones.map((z) => ({ value: z, label: z })),
+        ]}
+        help="Auto follows this machine. Set the opening-chop cutoff below in the same zone."
       />
 
       <button
