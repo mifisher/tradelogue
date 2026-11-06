@@ -174,6 +174,12 @@ export const CHAT_TOOLS: ChatTool[] = [
 
 // ── Tool executor ─────────────────────────────────────────────────────────────
 
+/** Models sometimes send numbers as strings ("4"); accept both. */
+function num(v: unknown): number | undefined {
+  const n = typeof v === 'string' && v.trim() !== '' ? Number(v) : v;
+  return typeof n === 'number' && Number.isFinite(n) ? n : undefined;
+}
+
 export async function executeTool(
   name: string,
   input: Record<string, unknown>,
@@ -193,7 +199,7 @@ export async function executeTool(
       }
 
       case 'list_trades': {
-        const rawLimit = typeof input.limit === 'number' ? input.limit : 20;
+        const rawLimit = num(input.limit) ?? 20;
         const limit = Math.min(Math.max(1, rawLimit), 50);
 
         const filters: TradeFilters = {};
@@ -205,9 +211,9 @@ export async function executeTool(
         }
         if (typeof input.underlying === 'string') filters.underlying = input.underlying;
         if (input.result === 'win' || input.result === 'loss') filters.result = input.result;
-        const setup = typeof input.setup === 'number' ? input.setup : undefined;
-        const minAfter = typeof input.min_minutes_after_open === 'number' ? input.min_minutes_after_open : undefined;
-        const maxAfter = typeof input.max_minutes_after_open === 'number' ? input.max_minutes_after_open : undefined;
+        const setup = num(input.setup);
+        const minAfter = num(input.min_minutes_after_open);
+        const maxAfter = num(input.max_minutes_after_open);
 
         const all = await closedTrades(filters);
         // Annotations for every match, since the setup filter needs them.

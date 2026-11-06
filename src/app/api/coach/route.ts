@@ -110,6 +110,14 @@ function parseToolArguments(args: string): Record<string, unknown> {
 // 8k cap let them return content:null with finish_reason "length".
 const OPENAI_COMPAT_MAX_TOKENS = 32000;
 
+// OpenRouter spreads one model across many hosts, and some of them drop
+// tool-call arguments: on 2026-11-06, 4 of 10 glm calls (PrimeIntellect,
+// OpenInference, InferenceNet, Friendli) sent list_trades only {"limit":50}.
+// These hosts passed 6/6. ponytail: hand-picked list; re-bench if chat breaks.
+const OPENROUTER_TOOL_PROVIDERS: Record<string, string[]> = {
+  'z-ai/glm-5.3-flash': ['wafer', 'coreweave', 'digitalocean', 'makora', 'z-ai'],
+};
+
 async function createMoonshotChatCompletion(
   config: AiConfig,
   messages: MoonshotMessage[],
@@ -134,6 +142,9 @@ async function createMoonshotChatCompletion(
       messages,
       tools: moonshotTools(),
       ...(allowTools ? {} : { tool_choice: 'none' }),
+      ...(config.provider === 'openrouter' && OPENROUTER_TOOL_PROVIDERS[config.models.chat]
+        ? { provider: { order: OPENROUTER_TOOL_PROVIDERS[config.models.chat], allow_fallbacks: false } }
+        : {}),
     }),
   });
 
