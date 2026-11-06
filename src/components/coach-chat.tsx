@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect, FormEvent, KeyboardEvent } from 'react';
+import ReactMarkdown, { type Components } from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -13,6 +15,33 @@ const STARTERS = [
   'Compare my setups',
   'What happened on my worst day?',
 ];
+
+// Model replies are GFM markdown (tables, headings, bold). react-markdown builds
+// React elements and ignores raw HTML, so a reply cannot inject markup.
+const MD: Components = {
+  h1: ({ children }) => <h3 className="text-base font-semibold mt-4 first:mt-0 mb-2">{children}</h3>,
+  h2: ({ children }) => <h3 className="text-base font-semibold mt-4 first:mt-0 mb-2">{children}</h3>,
+  h3: ({ children }) => <h4 className="font-semibold mt-3 first:mt-0 mb-1.5">{children}</h4>,
+  h4: ({ children }) => <h4 className="font-semibold mt-3 first:mt-0 mb-1.5">{children}</h4>,
+  p: ({ children }) => <p className="my-2 first:mt-0 last:mb-0 leading-relaxed">{children}</p>,
+  ul: ({ children }) => <ul className="my-2 pl-5 list-disc space-y-1">{children}</ul>,
+  ol: ({ children }) => <ol className="my-2 pl-5 list-decimal space-y-1">{children}</ol>,
+  li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+  strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+  a: ({ children, href }) => (
+    <a href={href} target="_blank" rel="noreferrer" className="underline underline-offset-2">{children}</a>
+  ),
+  code: ({ children }) => <code className="rounded bg-elevated px-1 py-0.5 text-[0.92em]">{children}</code>,
+  hr: () => <hr className="my-3 border-hairline" />,
+  blockquote: ({ children }) => <blockquote className="my-2 border-l-2 border-hairline pl-3 text-mute">{children}</blockquote>,
+  table: ({ children }) => (
+    <div className="my-3 overflow-x-auto">
+      <table className="w-full border-collapse text-left tabular-nums">{children}</table>
+    </div>
+  ),
+  th: ({ children }) => <th className="border-b border-hairline px-3 py-1.5 font-semibold whitespace-nowrap first:pl-0">{children}</th>,
+  td: ({ children }) => <td className="border-b border-hairline px-3 py-1.5 whitespace-nowrap first:pl-0">{children}</td>,
+};
 
 export function CoachChat() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -90,8 +119,10 @@ export function CoachChat() {
               </div>
             ) : (
               <div key={i} className="flex justify-start">
-                <div className="bg-deep rounded-[20px] rounded-bl-[4px] px-5 py-3 max-w-[85%] text-sm text-ondark whitespace-pre-wrap">
-                  {m.content}
+                <div className="bg-deep rounded-[20px] rounded-bl-[4px] px-5 py-3 max-w-[85%] min-w-0 text-sm text-ondark">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={MD}>
+                    {m.content}
+                  </ReactMarkdown>
                 </div>
               </div>
             ),
