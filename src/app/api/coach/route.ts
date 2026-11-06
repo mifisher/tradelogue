@@ -106,7 +106,15 @@ function parseToolArguments(args: string): Record<string, unknown> {
   }
 }
 
-async function createMoonshotChatCompletion(config: AiConfig, messages: MoonshotMessage[]) {
+// A ceiling, not a spend: reasoning models think before they answer, and an
+// 8k cap let them return content:null with finish_reason "length".
+const OPENAI_COMPAT_MAX_TOKENS = 32000;
+
+async function createMoonshotChatCompletion(
+  config: AiConfig,
+  messages: MoonshotMessage[],
+  allowTools = true,
+) {
   if (!config.apiKey || !config.baseUrl) {
     throw new Error(missingApiKeyMessage(config));
   }
@@ -119,12 +127,13 @@ async function createMoonshotChatCompletion(config: AiConfig, messages: Moonshot
     },
     body: JSON.stringify({
       model: config.models.chat,
-      max_tokens: 8192,
+      max_tokens: OPENAI_COMPAT_MAX_TOKENS,
       ...(moonshotThinkingParam(config.models.chat)
         ? { thinking: moonshotThinkingParam(config.models.chat) }
         : {}),
       messages,
       tools: moonshotTools(),
+      ...(allowTools ? {} : { tool_choice: 'none' }),
     }),
   });
 
@@ -213,11 +222,18 @@ async function runMoonshotChat(config: AiConfig, rawMessages: ChatMessage[]): Pr
   const messages = toMoonshotMessages(buildChatMessages(rawMessages));
 
   for (let iterations = 0; iterations < MAX_LOOP_ITERATIONS; iterations++) {
-    const response = await createMoonshotChatCompletion(config, messages);
+    // Last iteration: forbid tools so the model must answer with what it has.
+    const lastIteration = iterations === MAX_LOOP_ITERATIONS - 1;
+    const response = await createMoonshotChatCompletion(config, messages, !lastIteration);
     const choice = response.choices?.[0];
     const message = choice?.message;
 
     if (!message) break;
+    if (choice?.finish_reason === 'length' && !message.content?.trim()) {
+      throw new Error(
+        `${aiProviderLabel(config)} model ${config.models.chat} hit the ${OPENAI_COMPAT_MAX_TOKENS}-token cap before answering.`,
+      );
+    }
 
     if (choice?.finish_reason === 'tool_calls' && message.tool_calls?.length) {
       messages.push({
@@ -240,7 +256,7 @@ async function runMoonshotChat(config: AiConfig, rawMessages: ChatMessage[]): Pr
       continue;
     }
 
-    if (message.content) return message.content;
+    if (message.content?.trim()) return message.content;
     break;
   }
 

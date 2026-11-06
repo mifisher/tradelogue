@@ -15,10 +15,10 @@ import {
 } from '@/lib/queries';
 import { computeStats } from '@/lib/stats';
 import { disciplineOverview, violationsForSession } from '@/lib/discipline';
-import { RULES } from '@/lib/rules';
+import { RULES, minutesAfterOpen } from '@/lib/rules';
 import { fmtMoney, fmtHold } from '@/lib/format';
 import { getRuleConfigs } from '@/lib/trading-rules';
-import { TRADING_TIMEZONE } from '@/lib/config';
+import { TRADING_TIMEZONE, timezoneLabel } from '@/lib/config';
 
 // ── PT time formatter ────────────────────────────────────────────────────────
 
@@ -29,7 +29,7 @@ const TZ_TIME = new Intl.DateTimeFormat('en-US', {
   hour12: false,
 });
 
-function ptTime(d: Date): string {
+function localTime(d: Date): string {
   return TZ_TIME.format(d);
 }
 
@@ -74,7 +74,11 @@ export const CHAT_TOOLS: ChatTool[] = [
       'Call this tool to retrieve individual trade records — entries, exits, P&L, setup tags, and grades. ' +
       'Use it when the user asks about specific trades, a particular ticker, a certain date\'s trades, ' +
       'worst losses, best wins, or wants to drill into annotated setup/grade data. ' +
-      'Filter by date (YYYY-MM-DD), underlying ticker, or result (win/loss). ' +
+      'Filter by date or date range, underlying ticker, result (win/loss), setup number, and entry time ' +
+      'relative to the 9:30 ET market open. The response includes a `summary` (count, win rate, total P&L) ' +
+      'computed over ALL matching trades, not just the returned page — use it for aggregate comparisons ' +
+      '(e.g. setup 4 in the first 30 min after open vs. later: call once with max_minutes_after_open=30 and ' +
+      'min_minutes_after_open=0, once with min_minutes_after_open=30). ' +
       'Default limit is 20; increase up to 50 for broader queries. Never omit the limit — ' +
       'the database has hundreds of trades and this tool will refuse to return them all.',
     input_schema: {
@@ -83,6 +87,26 @@ export const CHAT_TOOLS: ChatTool[] = [
         date: {
           type: 'string',
           description: 'Filter to a single session date, YYYY-MM-DD.',
+        },
+        from: {
+          type: 'string',
+          description: 'Start session date inclusive, YYYY-MM-DD.',
+        },
+        to: {
+          type: 'string',
+          description: 'End session date inclusive, YYYY-MM-DD.',
+        },
+        setup: {
+          type: 'number',
+          description: 'Filter to trades tagged with this setup number (1-4).',
+        },
+        min_minutes_after_open: {
+          type: 'number',
+          description: 'Only trades entered at least this many minutes after the 9:30 ET open (inclusive). Pre-market entries are negative.',
+        },
+        max_minutes_after_open: {
+          type: 'number',
+          description: 'Only trades entered fewer than this many minutes after the 9:30 ET open (exclusive).',
         },
         underlying: {
           type: 'string',
@@ -173,19 +197,32 @@ export async function executeTool(
         const limit = Math.min(Math.max(1, rawLimit), 50);
 
         const filters: TradeFilters = {};
+        if (typeof input.from === 'string') filters.from = input.from;
+        if (typeof input.to === 'string') filters.to = input.to;
         if (typeof input.date === 'string') {
           filters.from = input.date;
           filters.to = input.date;
         }
         if (typeof input.underlying === 'string') filters.underlying = input.underlying;
         if (input.result === 'win' || input.result === 'loss') filters.result = input.result;
+        const setup = typeof input.setup === 'number' ? input.setup : undefined;
+        const minAfter = typeof input.min_minutes_after_open === 'number' ? input.min_minutes_after_open : undefined;
+        const maxAfter = typeof input.max_minutes_after_open === 'number' ? input.max_minutes_after_open : undefined;
 
-        const rows = await closedTrades(filters);
-        const sliced = rows.slice(0, limit);
-
-        // Fetch annotations for these trades
-        const execIds = sliced.map((r) => r.firstExecId).filter((id): id is string => id !== null);
+        const all = await closedTrades(filters);
+        // Annotations for every match, since the setup filter needs them.
+        const execIds = all.map((r) => r.firstExecId).filter((id): id is string => id !== null);
         const annotations = await getAnnotationsByExecIds(execIds);
+
+        const rows = all.filter((r) => {
+          if (setup !== undefined && (r.firstExecId ? annotations.get(r.firstExecId)?.setupNumber : null) !== setup) return false;
+          const mins = minutesAfterOpen(r.openedAt);
+          if (minAfter !== undefined && mins < minAfter) return false;
+          if (maxAfter !== undefined && mins >= maxAfter) return false;
+          return true;
+        });
+        const sliced = rows.slice(0, limit);
+        const stats = computeStats(rows.filter((r) => r.realizedPnl !== null).map(toStatTrade));
 
         const compact = sliced.map((r) => {
           const ann = r.firstExecId ? annotations.get(r.firstExecId) : undefined;
@@ -195,7 +232,8 @@ export async function executeTool(
           return {
             ticker: r.underlying,
             date: r.sessionDate,
-            time_pt: ptTime(r.openedAt),
+            time: localTime(r.openedAt),
+            minutes_after_open: minutesAfterOpen(r.openedAt),
             direction: r.direction,
             qty: r.quantityOpened,
             entry: r.avgEntryPrice,
@@ -211,6 +249,15 @@ export async function executeTool(
         return JSON.stringify({
           returned: compact.length,
           total_matching: rows.length,
+          timezone: timezoneLabel(),
+          summary: {
+            trade_count: stats.tradeCount,
+            win_count: stats.winCount,
+            loss_count: stats.lossCount,
+            win_rate: `${(stats.winRate * 100).toFixed(1)}%`,
+            total_pnl: fmtMoney(stats.totalPnl),
+            avg_pnl: stats.tradeCount ? fmtMoney(stats.totalPnl / stats.tradeCount) : null,
+          },
           trades: compact,
         });
       }

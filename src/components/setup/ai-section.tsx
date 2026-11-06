@@ -48,6 +48,7 @@ const RECOMMENDED: Record<string, string> = {
   OPENROUTER_VOICE_MODEL: 'google/gemini-2.5-flash-lite',
   OPENROUTER_COACH_MODEL: 'z-ai/glm-5.3-flash',
   OPENROUTER_BRIEF_MODEL: 'z-ai/glm-5.3-flash',
+  OPENROUTER_CHAT_MODEL: 'z-ai/glm-5.3-flash',
   OPENROUTER_JUDGE_MODEL: 'moonshotai/kimi-k2.6',
 };
 
